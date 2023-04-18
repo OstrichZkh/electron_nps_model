@@ -180,7 +180,6 @@ async function createNewProject() {
       let prjectInfos = JSON.parse(fs.readFileSync(projectInfoJson))
       prjectInfos.push(projectInfo)
       fs.writeFileSync(projectInfoJson, JSON.stringify(prjectInfos))
-
     }
     return ProjectPath
   }
@@ -204,6 +203,17 @@ function createWindow() {
       return JSON.parse(data)
     })
   }
+
+  ipcMain.handle('deleteProject', (e, payload) => {
+    let projectInfos = JSON.parse(fs.readFileSync(projectInfoJson))
+    let newProjectInfos = projectInfos.filter((info) => info.projectName !== payload)
+    fs.writeFileSync(projectInfoJson, JSON.stringify(newProjectInfos))
+    console.log(`项目${payload}删除成功`);
+    return {
+      status: 200,
+      msg: 'ok'
+    }
+  })
 }
 function checkJson() { }
 

@@ -23,5 +23,5 @@
   },
   "include": [
     "src"
-, "main.js", "main.js"  ]
+, "main.ts", "main.ts"  ]
 }

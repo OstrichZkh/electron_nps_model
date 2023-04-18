@@ -4,18 +4,19 @@ import styled from "styled-components";
 import { ProjectInfo } from "../../interface/index.ts";
 import { ReactSVG } from "react-svg";
 import file from "../../assets/svgs/file.svg";
+import { Button, Modal } from "antd";
 import {
   updateStatus,
   getProjectInfoAsync,
   getStatus,
 } from "../../store/features/dataManagementSlice.ts";
 import { useSelector, useDispatch } from "react-redux";
-import { Switch } from "antd";
 import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
 
 const ProjectViewBox = styled.div`
   display: flex;
-  width: 90vw;
+  height: 100vh;
+  /* width: 80vw; */
   .page-title {
     margin: 1rem;
     font-size: 1.5rem;
@@ -109,15 +110,33 @@ function ProjectView() {
     (state) => state.dataManagementReducer
   );
   let dispatch = useDispatch();
+  // 首次渲染查询项目信息
   useEffect(() => {
     if (allProjectInfos.length === 0) {
       dispatch(getProjectInfoAsync());
     }
   }, []);
 
-  const setCurProjectInfoMemo = useCallback(() => {
-    setCurProjectInfo();
-  }, [curProjectInfo]);
+  // 询问是否删除项目
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const showModal = () => {
+    setIsModalOpen(true);
+  };
+  const handleOk = async () => {
+    setConfirmLoading(true);
+    let res = await window.electronAPI.deleteProject(
+      curProjectInfo.projectName
+    );
+    if (res.status === 200) {
+      setIsModalOpen(false);
+      setConfirmLoading(false);
+      dispatch(getProjectInfoAsync());
+    }
+  };
+  const handleCancel = () => {
+    setIsModalOpen(false);
+  };
   return (
     <ProjectViewBox>
       <SiderBar />
@@ -195,6 +214,24 @@ function ProjectView() {
               }
             })}
           </div>
+          <Button
+            onClick={showModal}
+            style={{ margin: "1.5rem" }}
+            type="primary"
+            danger
+          >
+            删除项目
+          </Button>
+          <Modal
+            title="是否删除项目，此操作不可逆"
+            cancelText="取消"
+            confirmLoading={confirmLoading}
+            okText="确定删除"
+            okType="primary"
+            open={isModalOpen}
+            onOk={handleOk}
+            onCancel={handleCancel}
+          ></Modal>
         </div>
       )}
     </ProjectViewBox>

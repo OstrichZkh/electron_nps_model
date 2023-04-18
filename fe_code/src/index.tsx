@@ -6,7 +6,8 @@ import HomeView from "./views/HomeView";
 import { HashRouter, BrowserRouter } from "react-router-dom";
 import store from "./store";
 import { Provider } from "react-redux";
-
+var root_ = document.getElementsByTagName("body")[0];
+// root_.style.fontSize = "20px";
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
 );
