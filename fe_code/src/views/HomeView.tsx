@@ -1,32 +1,73 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import ProjectView from "./ProjectView";
-import { Link, Routes, Route } from "react-router-dom";
+import SetupView from "./SetupView";
+
+import { Link } from "react-router-dom";
 import styled from "styled-components";
-import { url } from "inspector";
+import { ReactSVG } from "react-svg";
+import activeFile from "../assets/svgs/file-actived.svg";
+import unactiveFile from "../assets/svgs/file-unactive.svg";
+import activeSetup from "../assets/svgs/setup-actived.svg";
+import unactiveSetup from "../assets/svgs/setup-unactive.svg";
+import RouterView from "../router";
 
 const HomeViewBox = styled.div`
+  display: flex;
+  flex-direction: row;
   .nav-box {
-    background-color: red;
+    background-color: rgb(18, 60, 105);
     height: 100vh;
-    width: 3rem;
+    width: 4rem;
     .file-box {
-      width: 40px;
-      height: 40px;
-      background-color: green;
-      background-image: url("../assets/svgs/file-actived.svg");
+      width: 3rem;
+      height: 3rem;
+      margin: 0.4rem auto;
+
+      svg {
+        width: 3rem;
+        height: 3rem;
+      }
     }
   }
 `;
 
 function HomeView() {
+  let [curPage, setCurPage] = useState("project");
+  let changeTab = function (tab: "project" | "setup"): void {
+    setCurPage(tab);
+  };
+
   return (
     <HomeViewBox>
       <div className="nav-box">
         <Link to="/">
-          <img className="file-box"></img>
+          <div
+            className="file-box"
+            onClick={() => {
+              changeTab("project");
+            }}
+          >
+            <ReactSVG src={curPage == "project" ? activeFile : unactiveFile} />
+          </div>
         </Link>
-        <div>1</div>
+        <Link
+          to="/setup"
+          onClick={() => {
+            changeTab("setup");
+          }}
+        >
+          <div className="file-box">
+            <ReactSVG
+              src={curPage !== "project" ? activeSetup : unactiveSetup}
+            />
+          </div>
+        </Link>
       </div>
+
+      <div className="page-box">
+        <RouterView />
+      </div>
+
       {/* <Link to="/">项目管理</Link>
         <Link to="/data">数据管理</Link>
         <Routes>
