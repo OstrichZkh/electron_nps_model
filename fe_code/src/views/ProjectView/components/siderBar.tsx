@@ -11,8 +11,8 @@ const SiderBarBox = styled.div`
   height: 100vh;
   width: 12rem;
   background-color: rgb(244, 245, 247);
-  padding-top: 1rem;
   .title {
+    padding-top: 1rem;
     font-size: 1.3rem;
     font-weight: 600;
     text-align: center;

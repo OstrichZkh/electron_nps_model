@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Title from "../../components/Title";
 import { DatePicker, Button } from "antd";
 import styled from "styled-components";
@@ -23,24 +23,36 @@ const SimRangeBox = styled.div`
 
 function SimRangeView() {
   let { curProjectInfo } = useSelector((state) => state.dataManagementReducer);
-  console.log(curProjectInfo);
+  let { startDate, endDate } = curProjectInfo.periods;
+  const [periods, setPeriods] = useState([
+    startDate ? startDate : "2016/01",
+    endDate ? endDate : "2017/01",
+  ]);
+
   const onDataChange = (e) => {
-    console.log(e);
+    let startD =
+      e[0].$y + "/" + (Number(e[0].$M) < 9 ? "0" + (e[0].$M + 1) : e[0].$M + 1);
+    let endD =
+      e[1].$y + "/" + (Number(e[1].$M) < 9 ? "0" + (e[1].$M + 1) : e[1].$M + 1);
+    setPeriods([startD, endD]);
   };
+
+  const submitDate = () => {};
+
   return (
     <SimRangeBox>
       <Title title="模拟期选择" />
       <RangePicker
         defaultValue={[
-          dayjs("2015/01", "YYYY/MM"),
-          dayjs("2016/01", "YYYY/MM"),
+          dayjs(periods[0], "YYYY/MM"),
+          dayjs(periods[1], "YYYY/MM"),
         ]}
         style={{ width: "30rem", marginBottom: "1rem" }}
         size="large"
         picker="month"
         onChange={onDataChange}
       />
-      <Button type="primary" style={{ width: "10rem" }}>
+      <Button onClick={submitDate} type="primary" style={{ width: "10rem" }}>
         确认
       </Button>
     </SimRangeBox>
