@@ -1,9 +1,17 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import SiderBar from "./components/siderBar";
 import styled from "styled-components";
 import { ProjectInfo } from "../../interface/index.ts";
 import { ReactSVG } from "react-svg";
 import file from "../../assets/svgs/file.svg";
+import {
+  updateStatus,
+  getProjectInfoAsync,
+  getStatus,
+} from "../../store/features/dataManagementSlice.ts";
+import { useSelector, useDispatch } from "react-redux";
+import { Switch } from "antd";
+import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
 
 const ProjectViewBox = styled.div`
   display: flex;
@@ -64,15 +72,55 @@ const ProjectViewBox = styled.div`
       font-weight: 600;
     }
   }
+  .page-data {
+    margin: 0 30px;
+    margin-top: 50px;
+    font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    .page-data-title {
+      margin-bottom: 0.5rem;
+    }
+    .page-data-item {
+      border-top: 1px solid rgb(222, 226, 230);
+      border-bottom: 1px solid rgb(222, 226, 230);
+      margin-top: -1px;
+      width: 100%;
+      padding: 5px 0;
+      display: flex;
+      svg {
+        width: 20px;
+        padding-right: 10px;
+      }
+      .page-data-item-title {
+        font-weight: 100;
+        color: rgb(58, 138, 207);
+      }
+      .page-data-item-title:hover {
+        text-decoration: underline;
+        cursor: pointer;
+      }
+    }
+  }
 `;
 
 function ProjectView() {
-  let [curProjectInfo, setCurProjectInfo]: [ProjectInfo | any, Function] =
-    useState(null);
+  // 获取公共状态
+  let { allProjectInfos, curProjectInfo } = useSelector(
+    (state) => state.dataManagementReducer
+  );
+  let dispatch = useDispatch();
+  useEffect(() => {
+    if (allProjectInfos.length === 0) {
+      dispatch(getProjectInfoAsync());
+    }
+  }, []);
 
+  const setCurProjectInfoMemo = useCallback(() => {
+    setCurProjectInfo();
+  }, [curProjectInfo]);
   return (
     <ProjectViewBox>
-      <SiderBar setCurProjectInfo={setCurProjectInfo} />
+      <SiderBar />
       {curProjectInfo && (
         <div className="page-container">
           {/* 标题 */}
@@ -97,6 +145,55 @@ function ProjectView() {
               <div className="project-info-item sub-title">最近保存</div>
               <div className="project-info-item">2022-8-23 9:09</div>
             </div>
+          </div>
+          {/* 数据信息 */}
+          <div className="page-data">
+            <div className="page-data-title">数据信息</div>
+            {Object.keys(curProjectInfo).map((key: string) => {
+              if (
+                ["rainfall", "DEM", "landUse", "soilType", "D8"].indexOf(
+                  key
+                ) !== -1
+              ) {
+                let title: string = "";
+                let status: boolean = curProjectInfo[key].status;
+                switch (key) {
+                  case "rainfall":
+                    title = "降雨数据";
+                    break;
+                  case "DEM":
+                    title = "DEM";
+                    break;
+                  case "landUse":
+                    title = "土地利用数据";
+                    break;
+                  case "soilType":
+                    title = "土壤类型数据";
+                    break;
+                  case "D8":
+                    title = "流向数据";
+                    break;
+                }
+                return (
+                  <div className="page-data-item" key={key}>
+                    {status === true ? <CheckOutlined /> : <CloseOutlined />}
+                    <div className="page-data-item-title">{title}</div>
+                  </div>
+                );
+              } else if (key === "rusle") {
+                // const { S_factor, L_factor, C_factor } = curProjectInfo[key];
+                return Object.keys(curProjectInfo[key]).map((factor) => {
+                  let status: boolean = curProjectInfo[key][factor];
+                  let title: string = factor[0] + "因子";
+                  return (
+                    <div className="page-data-item" key={title}>
+                      {status === true ? <CheckOutlined /> : <CloseOutlined />}
+                      <div className="page-data-item-title">{title}</div>
+                    </div>
+                  );
+                });
+              }
+            })}
           </div>
         </div>
       )}

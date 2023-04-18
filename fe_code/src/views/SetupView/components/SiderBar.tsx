@@ -1,12 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import styled from "styled-components";
 import type { MenuProps } from "antd";
 import { Menu } from "antd";
-import {
-  AppstoreOutlined,
-  MailOutlined,
-  SettingOutlined,
-} from "@ant-design/icons";
+import { SettingOutlined } from "@ant-design/icons";
+import { useNavigate, useLocation } from "react-router-dom";
+
 type MenuItem = Required<MenuProps>["items"][number];
 const SiderBarBox = styled.div`
   height: 100vh;
@@ -30,16 +28,16 @@ function getItem(
 }
 
 const items: MenuProps["items"] = [
-  getItem("数据准备", "sub1", <AppstoreOutlined />, [
-    getItem("模拟期准备", "1"),
-    getItem("降雨数据", "2"),
-    getItem("土地利用类型", "3"),
-    getItem("土壤类型", "4"),
-    getItem("DEM数据", "5"),
-    getItem("RUSLE数据", "6"),
+  getItem("数据准备", "sub1", <SettingOutlined />, [
+    getItem("模拟期准备", "simrange"),
+    getItem("降雨数据", "rainfall"),
+    getItem("土地利用类型", "landuse"),
+    getItem("土壤类型", "soiltype"),
+    getItem("DEM数据", "dem"),
+    getItem("RUSLE数据", "rusledata"),
   ]),
   { type: "divider" },
-  getItem("面源污染模拟", "sub2", <AppstoreOutlined />, [
+  getItem("面源污染模拟", "sub2", <SettingOutlined />, [
     getItem("水土流失情况", "rusle"),
     getItem("模型参数设置", "parameters", null, [
       getItem("农业措施设置", "fert"),
@@ -50,9 +48,15 @@ const items: MenuProps["items"] = [
   ]),
 ];
 function SiderBar() {
+  const navigate = useNavigate();
   let menuClick: MenuProps["onClick"] = function (e): void {
-    console.log(e);
+    navigate(`/setup/${e.key}`, { replace: true });
   };
+
+  let initSelect: string = "";
+  // 设置只能有一个展开项
+  const [openKeys, setOpenKeys] = useState([initSelect]);
+
   return (
     <SiderBarBox>
       <Menu
@@ -67,4 +71,4 @@ function SiderBar() {
   );
 }
 
-export default SiderBar;
+export default React.memo(SiderBar);

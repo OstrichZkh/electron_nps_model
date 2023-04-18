@@ -1,15 +1,14 @@
 import React from "react";
 import SiderBar from "./components/SiderBar";
-import type { MenuProps } from "antd";
-import { Menu } from "antd";
-type MenuItem = Required<MenuProps>["items"][number];
+import { Outlet } from "react-router-dom";
 
 function SetupView() {
   return (
-    <div>
+    <div style={{ display: "flex" }}>
       <SiderBar />
+      <Outlet />
     </div>
   );
 }
 
-export default SetupView;
+export default React.memo(SetupView);

@@ -1,7 +1,7 @@
 import React from "react";
 
-function LanduseView() {
-  return <div>LanduseView</div>;
+function SimRangeView() {
+  return <div>SimRangeView</div>;
 }
 
-export default LanduseView;
+export default SimRangeView;

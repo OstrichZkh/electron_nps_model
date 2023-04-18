@@ -3,16 +3,20 @@ import ReactDOM from "react-dom/client";
 import "./index.css";
 import reportWebVitals from "./reportWebVitals";
 import HomeView from "./views/HomeView";
-import { HashRouter } from "react-router-dom";
+import { HashRouter, BrowserRouter } from "react-router-dom";
+import store from "./store";
+import { Provider } from "react-redux";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
 );
 root.render(
   <React.StrictMode>
-    <HashRouter>
-      <HomeView />
-    </HashRouter>
+    <BrowserRouter>
+      <Provider store={store}>
+        <HomeView />
+      </Provider>
+    </BrowserRouter>
   </React.StrictMode>
 );
 

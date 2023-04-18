@@ -1,5 +1,11 @@
 import ProjectView from "../views/ProjectView";
 import SetupView from "../views/SetupView";
+import RainfallView from "../views/RainfallView";
+import SimRangeView from "../views/SimRangeView";
+import LanduseView from "../views/LanduseView";
+import SoiltypeView from "../views/SoiltypeView";
+import DemView from "../views/DemView";
+import RusledataView from "../views/RusleDataView";
 import { lazy } from "react";
 import { Navigate } from "react-router-dom";
 
@@ -13,40 +19,43 @@ interface Routes {
 
 const setupRoutes: Routes[] = [
   {
-    path: "setup",
-    component: () => <Navigate to="setup/simrange" />,
+    path: "/setup",
+    component: () => <Navigate to="/setup/simrange" />,
   },
   {
-    path: "setup/simrange",
+    path: "/setup/simrange",
     name: "simrange",
-    component: lazy(
-      () => import(/* webpackChunkName:"setup" */ "../views/SimRangeView")
-    ),
+    component: SimRangeView,
     meta: {},
   },
   {
-    path: "setup/rainfall",
+    path: "/setup/rainfall",
     name: "rainfall",
-    component: lazy(
-      () => import(/* webpackChunkName:"setup" */ "../views/RainfallView")
-    ),
+    component: RainfallView,
     meta: {},
   },
   {
-    path: "setup/landuse",
+    path: "/setup/landuse",
     name: "landuse",
-    component: lazy(
-      () => import(/* webpackChunkName:"setup" */ "../views/LanduseView")
-    ),
+    component: LanduseView,
     meta: {},
   },
-
   {
-    path: "setup/dem",
+    path: "/setup/soiltype",
+    name: "soiltype",
+    component: SoiltypeView,
+    meta: {},
+  },
+  {
+    path: "/setup/dem",
     name: "dem",
-    component: lazy(
-      () => import(/* webpackChunkName:"setup" */ "../views/DemView")
-    ),
+    component: DemView,
+    meta: {},
+  },
+  {
+    path: "/setup/rusledata",
+    name: "rusledata",
+    component: RusledataView,
     meta: {},
   },
 ];

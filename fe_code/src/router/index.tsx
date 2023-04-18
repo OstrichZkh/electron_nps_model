@@ -39,7 +39,6 @@ const createRoute = function (routes: Routes[]) {
     <>
       {routes.map((item, index) => {
         const { path, children } = item;
-
         return (
           <Route path={path} key={index} element={<Element {...item} />}>
             {Array.isArray(children) && createRoute(children)}
