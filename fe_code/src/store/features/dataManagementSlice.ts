@@ -1,5 +1,6 @@
 // 数据管理的切片
 import { createSlice } from '@reduxjs/toolkit'
+import { ProjectInfo } from "../../interface/index.ts";
 
 type updateType = { target: string[], value: any }[]
 
@@ -15,11 +16,7 @@ const dataManagementSlice = createSlice({
   // 编写业务逻辑的reducer
   reducers: {
     updateStatus(state: any, { payload }) {
-      payload = [{
-        target: [],
-        value: ''
-      }]
-      state.initialState = payload
+
     },
     getStatus(state: any, { payload }) {
       state.allProjectInfos = payload
@@ -42,9 +39,12 @@ export const getProjectInfoAsync = () => {
   }
 }
 
-export const updateStatusAsync = (payload) => {
-  return async (dispatch: Function) => {
-
+export const updateStatusAsync = (payload: updateType) => {
+  return async (dispatch: Function, getState: Function): Promise<void> => {
+    let state = getState()
+    let newPayload = { projectName: state.dataManagementReducer.curProjectInfo.projectName, payload }
+    let updatedInfo = await window.electronAPI.updateProjectInfo(newPayload);
+    dispatch(updateStatus(updatedInfo))
   }
 }
 

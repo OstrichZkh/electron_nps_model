@@ -158,11 +158,18 @@ function ProjectView() {
               <div className="project-info-item sub-title">流域面积</div>
               <div className="project-info-item">110.5 ha</div>
               <div className="project-info-item sub-title">模拟期</div>
-              <div className="project-info-item">2010-2021</div>
+              <div className="project-info-item">
+                {curProjectInfo.periods &&
+                  curProjectInfo.periods.startDate +
+                    "-" +
+                    curProjectInfo.periods.endDate}
+              </div>
               <div className="project-info-item sub-title">栅格数量</div>
               <div className="project-info-item">9635</div>
               <div className="project-info-item sub-title">最近保存</div>
-              <div className="project-info-item">2022-8-23 9:09</div>
+              <div className="project-info-item">
+                {curProjectInfo.lastSaved}
+              </div>
             </div>
           </div>
           {/* 数据信息 */}

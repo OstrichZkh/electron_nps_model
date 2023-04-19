@@ -209,23 +209,27 @@ function deleteDir(url) {
 }
 function createWindow() {
   const mainWindow = new BrowserWindow({
+    width: 2000,
+    height: 2000,
     webPreferences: {
       preload: path.join(__dirname, 'render.ts')
     }
   })
-  ipcMain.handle('createNewProject', createNewProject)
   mainWindow.loadURL("http://localhost:3000/");
+  mainWindow.webContents.openDevTools({
+    mode: 'right'
+  });
 
   // 检查项目JSON文件是否存在，若存在则返回所有项目的信息。
   if (!fs.existsSync(projectInfoJson)) {
     fs.writeFileSync(projectInfoJson, JSON.stringify([]))
-  } else {
-    ipcMain.handle('requireProjectInfo', () => {
-      let data = fs.readFileSync(projectInfoJson)
-      return JSON.parse(data)
-    })
   }
-
+  ipcMain.handle('requireProjectInfo', () => {
+    let data = fs.readFileSync(projectInfoJson)
+    console.log(JSON.parse(data));
+    return JSON.parse(data)
+  })
+  ipcMain.handle('createNewProject', createNewProject)
   ipcMain.handle('deleteProject', (e, payload) => {
     let projectInfos = JSON.parse(fs.readFileSync(projectInfoJson))
     let newProjectInfos = projectInfos.filter((info) => info.projectName !== payload)
@@ -239,9 +243,41 @@ function createWindow() {
       msg: 'ok'
     }
   })
+  ipcMain.handle('updateProjectInfo', (e, payload) => {
+    console.log(payload);
+    // let projectInfos = JSON.parse(fs.readFileSync(projectInfoJson))
+    let updatedInfo = updateStatus(payload)
+    return updatedInfo
+  })
 }
 function checkJson() { }
+// 更新项目某一信息
+function updateStatus(payload) {
 
+  let projectInfos = JSON.parse(fs.readFileSync(projectInfoJson))
+  let curProject = projectInfos.filter((info) => info.projectName === payload.projectName)[0]
+  let restProjects = projectInfos.filter((info) => info.projectName !== payload.projectName)
+  function updateSingleStatus(payload, projectInfo) {
+    let { target, value } = payload
+    let newObj = projectInfo
+    for (let i = 0; i < target.length; i++) {
+      let key = target[i]
+      if (i == target.length - 1) {
+        newObj[key] = value
+      } else {
+        newObj = newObj[key]
+      }
+    }
+    return projectInfo
+  }
+
+  for (let practice of payload.payload) {
+    curProject = updateSingleStatus(practice, curProject)
+  }
+  fs.writeFileSync(projectInfoJson, JSON.stringify([curProject, ...restProjects]))
+
+  return curProject
+}
 
 app.whenReady().then(() => {
   createWindow()

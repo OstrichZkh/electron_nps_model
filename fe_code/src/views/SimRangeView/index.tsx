@@ -8,6 +8,7 @@ import {
   updateStatus,
   getProjectInfoAsync,
   getStatus,
+  updateStatusAsync,
 } from "../../store/features/dataManagementSlice.ts";
 
 const { RangePicker } = DatePicker;
@@ -24,7 +25,8 @@ const SimRangeBox = styled.div`
 function SimRangeView() {
   let { curProjectInfo } = useSelector((state) => state.dataManagementReducer);
   let { startDate, endDate } = curProjectInfo.periods;
-  const [periods, setPeriods] = useState([
+  let dispatch = useDispatch();
+  const [periods, setPeriods]: [string[], Function] = useState([
     startDate ? startDate : "2016/01",
     endDate ? endDate : "2017/01",
   ]);
@@ -37,7 +39,13 @@ function SimRangeView() {
     setPeriods([startD, endD]);
   };
 
-  const submitDate = () => {};
+  const submitDate = () => {
+    let payload = [
+      { target: ["periods", "startDate"], value: periods[0] },
+      { target: ["periods", "endDate"], value: periods[1] },
+    ];
+    dispatch(updateStatusAsync(payload));
+  };
 
   return (
     <SimRangeBox>

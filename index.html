@@ -30,4 +30,27 @@
       <div class="c">c</div>
     </div>
   </body>
+  <script>
+    let obj = {
+      a: {
+        b: 1,
+        c: 2,
+      },
+      d: 4,
+    };
+
+    let o = obj;
+    let payload = ["a", "b"];
+    for (let i = 0; i < payload.length; i++) {
+      let key = payload[i];
+      if (i == 0) {
+        o = o[key];
+      } else {
+        o[key] = 666;
+      }
+    }
+    console.log(obj);
+
+    function update(payload) {}
+  </script>
 </html>
