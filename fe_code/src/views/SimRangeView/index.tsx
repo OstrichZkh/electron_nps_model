@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import Title from "../../components/Title";
-import { DatePicker, Button } from "antd";
+import { DatePicker, Button, message } from "antd";
 import styled from "styled-components";
 import dayjs from "dayjs";
 import { useSelector, useDispatch } from "react-redux";
@@ -38,13 +38,17 @@ function SimRangeView() {
       e[1].$y + "/" + (Number(e[1].$M) < 9 ? "0" + (e[1].$M + 1) : e[1].$M + 1);
     setPeriods([startD, endD]);
   };
-
+  const [messageApi, contextHolder] = message.useMessage();
   const submitDate = () => {
     let payload = [
       { target: ["periods", "startDate"], value: periods[0] },
       { target: ["periods", "endDate"], value: periods[1] },
     ];
     dispatch(updateStatusAsync(payload));
+    messageApi.open({
+      type: "success",
+      content: "成功设置模拟期",
+    });
   };
 
   return (
@@ -63,6 +67,7 @@ function SimRangeView() {
       <Button onClick={submitDate} type="primary" style={{ width: "10rem" }}>
         确认
       </Button>
+      {contextHolder}
     </SimRangeBox>
   );
 }

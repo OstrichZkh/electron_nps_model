@@ -16,7 +16,7 @@ const dataManagementSlice = createSlice({
   // 编写业务逻辑的reducer
   reducers: {
     updateStatus(state: any, { payload }) {
-
+      state.curProjectInfo = payload
     },
     getStatus(state: any, { payload }) {
       state.allProjectInfos = payload
@@ -35,6 +35,7 @@ export const { updateStatus, getStatus, switchProject } = dataManagementSlice.ac
 export const getProjectInfoAsync = () => {
   return async (dispatch: Function) => {
     let projectInfos = await window.electronAPI.requireProjectInfo();
+
     dispatch(getStatus(projectInfos))
   }
 }
