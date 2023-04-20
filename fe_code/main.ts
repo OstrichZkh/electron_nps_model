@@ -85,8 +85,9 @@ const path = require('path')
 const fs = require('fs')
 const dayjs = require('dayjs');
 let projectInfoJson = path.join(__dirname, './projectInfo.json')
-
-
+let curProjectInfo
+let curProjectPath
+const spawn = require('child_process').spawn
 
 
 
@@ -177,8 +178,10 @@ async function createNewProject() {
           }
         }
       }
+      curProjectInfo = projectInfo
+      curProjectPath = ProjectPath
       let prjectInfos = JSON.parse(fs.readFileSync(projectInfoJson))
-      prjectInfos.push(projectInfo)
+      prjectInfos = [projectInfo, ...prjectInfos]
       fs.writeFileSync(projectInfoJson, JSON.stringify(prjectInfos))
     }
     return ProjectPath
@@ -186,26 +189,66 @@ async function createNewProject() {
 }
 function deleteDir(url) {
   var files = [];
-
   if (fs.existsSync(url)) {  //判断给定的路径是否存在
-
     files = fs.readdirSync(url);   //返回文件和子目录的数组
     files.forEach(function (file, index) {
       var curPath = path.join(url, file);
-
       if (fs.statSync(curPath).isDirectory()) { //同步读取文件夹文件，如果是文件夹，则函数回调
         deleteDir(curPath);
       } else {
         fs.unlinkSync(curPath);    //是指定文件，则删除
       }
-
     });
-
     fs.rmdirSync(url); //清除文件夹
   } else {
     console.log("给定的路径不存在！");
   }
 
+}
+
+function checkJson() { }
+// 更新项目某一信息
+function updateStatus(payload) {
+  function updateSingleStatus(payload, projectInfo) {
+    let { target, value } = payload
+    let newObj = projectInfo
+    for (let i = 0; i < target.length; i++) {
+      let key = target[i]
+      if (i == target.length - 1) {
+        newObj[key] = value
+      } else {
+        newObj = newObj[key]
+      }
+    }
+    return projectInfo
+  }
+  if (Array.isArray(payload)) {
+    let projectInfos = JSON.parse(fs.readFileSync(projectInfoJson))
+    let restProjects = projectInfos.filter((info) => info.projectName !== curProjectInfo.projectName)
+    for (let practice of payload) {
+      curProjectInfo = updateSingleStatus(practice, curProjectInfo)
+    }
+    fs.writeFileSync(projectInfoJson, JSON.stringify([curProjectInfo, ...restProjects]))
+    return curProjectInfo
+  } else {
+    let projectInfos = JSON.parse(fs.readFileSync(projectInfoJson))
+    let curProject = projectInfos.filter((info) => info.projectName === payload.projectName)[0]
+    let restProjects = projectInfos.filter((info) => info.projectName !== payload.projectName)
+    for (let practice of payload.payload) {
+      curProject = updateSingleStatus(practice, curProject)
+    }
+    fs.writeFileSync(projectInfoJson, JSON.stringify([curProject, ...restProjects]))
+    return curProject
+  }
+
+}
+
+function updataStatusWithEntireInfo(info) {
+  let projectInfos = JSON.parse(fs.readFileSync(projectInfoJson))
+  let newProjectInfos = [info, ...projectInfos.filter((i) => {
+    return i.projectName !== info.projectName
+  })]
+  fs.writeFileSync(projectInfoJson, JSON.stringify(newProjectInfos))
 }
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -225,9 +268,10 @@ function createWindow() {
     fs.writeFileSync(projectInfoJson, JSON.stringify([]))
   }
   ipcMain.handle('requireProjectInfo', () => {
-    let data = fs.readFileSync(projectInfoJson)
-    console.log(JSON.parse(data));
-    return JSON.parse(data)
+    let data = JSON.parse(fs.readFileSync(projectInfoJson))
+    curProjectInfo = data[0]
+    curProjectPath = curProjectInfo.projectPath
+    return data
   })
   ipcMain.handle('createNewProject', createNewProject)
   ipcMain.handle('deleteProject', (e, payload) => {
@@ -244,41 +288,53 @@ function createWindow() {
     }
   })
   ipcMain.handle('updateProjectInfo', (e, payload) => {
-    console.log(payload);
     // let projectInfos = JSON.parse(fs.readFileSync(projectInfoJson))
+    if (!payload) {
+      return curProjectInfo
+    }
     let updatedInfo = updateStatus(payload)
+    curProjectInfo = updatedInfo
     return updatedInfo
   })
-}
-function checkJson() { }
-// 更新项目某一信息
-function updateStatus(payload) {
+  ipcMain.handle('uploadFile', (e, payload) => {
+    console.log(payload);
+    const { filePath, type } = payload
+    let pyPath = './src/pycode/updateBasicData.py'
+    // 回调函数的返回值不能作为外层函数的返回值，需要再包裹一层Promise
+    return new Promise((resolve, reject) => {
+      if (payload.type == 'rainfall') {
+        // 导入降雨数据并进行统计
+        fs.copyFileSync(filePath, path.join(curProjectPath, 'rainfall.txt'))
+        const py = spawn('python', [pyPath, curProjectPath, path.join(__dirname, './projectInfo.json')])
+        py.stdout.on('data', function (rainfallInfo) {
+          if (rainfallInfo == 'err' || rainfallInfo.toString() == 'err') {
+            return {
+              status: '400',
+              msg: 'rainfallErr'
+            }
+          }
+          updateStatus([
+            { target: ['rainfall', 'value'], value: rainfallInfo.toString() },
+            { target: ['rainfall', 'state'], value: true }
+          ])
+          resolve({
+            status: 200,
+            msg: curProjectInfo
+          })
+        })
 
-  let projectInfos = JSON.parse(fs.readFileSync(projectInfoJson))
-  let curProject = projectInfos.filter((info) => info.projectName === payload.projectName)[0]
-  let restProjects = projectInfos.filter((info) => info.projectName !== payload.projectName)
-  function updateSingleStatus(payload, projectInfo) {
-    let { target, value } = payload
-    let newObj = projectInfo
-    for (let i = 0; i < target.length; i++) {
-      let key = target[i]
-      if (i == target.length - 1) {
-        newObj[key] = value
       } else {
-        newObj = newObj[key]
+        resolve({
+          status: 400,
+          msg: 'rainfallErr'
+        }
+        )
       }
-    }
-    return projectInfo
-  }
+    })
 
-  for (let practice of payload.payload) {
-    curProject = updateSingleStatus(practice, curProject)
-  }
-  fs.writeFileSync(projectInfoJson, JSON.stringify([curProject, ...restProjects]))
+  })
 
-  return curProject
 }
-
 app.whenReady().then(() => {
   createWindow()
   checkJson()

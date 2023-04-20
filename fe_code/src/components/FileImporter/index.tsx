@@ -4,6 +4,8 @@ import { useSelector, useDispatch } from "react-redux";
 import { InboxOutlined } from "@ant-design/icons";
 import type { UploadProps } from "antd";
 import { message, Upload } from "antd";
+import { updateStatus } from "../../store/features/dataManagementSlice.ts";
+
 const { Dragger } = Upload;
 interface IProps {
   type:
@@ -18,7 +20,7 @@ interface IProps {
 }
 
 const FileBox = styled.div`
-  .drop-area {
+  /* .drop-area {
     height: 7.5rem;
     width: 90%;
     background: rgb(248, 249, 250);
@@ -38,17 +40,18 @@ const FileBox = styled.div`
   }
   .button {
     margin: 2rem;
-  }
+  } */
 `;
 
 const FileImporter = (props: IProps) => {
   let { curProjectInfo } = useSelector((state) => state.dataManagementReducer);
+  let dispatch = useDispatch();
   let draggerProps = {
     name: "file",
     multiple: true,
     action: "",
     directory: false,
-    fileList: ["66"],
+    fileList: [],
     onChange(info) {
       const { status } = info.file;
       if (status !== "uploading") {
@@ -60,14 +63,32 @@ const FileImporter = (props: IProps) => {
         message.error(`${info.file.name} file upload failed.`);
       }
     },
-    onDrop(e) {
-      console.log("Dropped files", e.dataTransfer.files);
+    async onDrop(e) {
+      const { files } = e.dataTransfer;
+      if (files.length == 1) {
+        let res = await window.electronAPI.uploadFile({
+          filePath: files[0].path,
+          type: props.type,
+        });
+        if (res.status == 200) {
+          messageApi.open({
+            type: "success",
+            content: "上传成功！",
+          });
+          dispatch(updateStatus(res.msg));
+        }
+      } else {
+        messageApi.open({
+          type: "error",
+          content: "一次只能上传一个文件，请检查！",
+        });
+      }
     },
     customRequest(e) {
       return true;
     },
   };
-
+  const [messageApi, contextHolder] = message.useMessage();
   return (
     <FileBox>
       {/* <div className="drop-area">
@@ -88,6 +109,7 @@ const FileImporter = (props: IProps) => {
           ，后续每一行为一天的数据
         </p>
       </Dragger>
+      {contextHolder}
     </FileBox>
   );
 };
