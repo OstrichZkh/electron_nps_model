@@ -51,6 +51,22 @@ function SimRangeView() {
     });
   };
 
+  const [options, setOptions] = useState({
+    xAxis: {
+      type: "category",
+      data: ["A", "B", "C"],
+    },
+    yAxis: {
+      type: "value",
+    },
+    series: [
+      {
+        data: [120, 200, 150],
+        type: "line",
+      },
+    ],
+  });
+
   return (
     <SimRangeBox>
       <Title title="模拟期选择" />

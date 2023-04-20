@@ -308,10 +308,10 @@ function createWindow() {
         const py = spawn('python', [pyPath, curProjectPath, path.join(__dirname, './projectInfo.json')])
         py.stdout.on('data', function (rainfallInfo) {
           if (rainfallInfo == 'err' || rainfallInfo.toString() == 'err') {
-            return {
-              status: '400',
+            reject({
+              status: 400,
               msg: 'rainfallErr'
-            }
+            })
           }
           updateStatus([
             { target: ['rainfall', 'value'], value: rainfallInfo.toString() },
@@ -324,7 +324,7 @@ function createWindow() {
         })
 
       } else {
-        resolve({
+        reject({
           status: 400,
           msg: 'rainfallErr'
         }
