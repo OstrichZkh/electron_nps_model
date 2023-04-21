@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { useSelector, useDispatch } from "react-redux";
 import { InboxOutlined } from "@ant-design/icons";
 import type { UploadProps } from "antd";
-import { message, Upload, Button } from "antd";
+import { message, Upload } from "antd";
 import { updateStatus } from "../../store/features/dataManagementSlice.ts";
 
 const { Dragger } = Upload;
@@ -59,6 +59,7 @@ const FileImporter = (props: IProps) => {
           filePath: fileList[0].originFileObj.path,
           type: props.type,
         });
+
         if (res.status == 200) {
           messageApi.open({
             type: "success",
@@ -74,11 +75,8 @@ const FileImporter = (props: IProps) => {
       }
       const { status } = info.file;
       if (status !== "uploading") {
-        console.log(info.file, info.fileList);
       }
       if (status === "done") {
-        console.log(info);
-
         message.success(`${info.file.name} file uploaded successfully.`);
       } else if (status === "error") {
         message.error(`${info.file.name} file upload failed.`);
@@ -113,22 +111,15 @@ const FileImporter = (props: IProps) => {
   const [messageApi, contextHolder] = message.useMessage();
   return (
     <FileBox>
-      {/* <div className="drop-area">
-        <div className="drop-area-inner">
-          {curProjectInfo.rainfall.status ? "文件已导入" : "请将文件拖入此处"}
-        </div>
-      </div>
-      <div className="button">
-        <Button type="primary">导入文件</Button>
-      </div> */}
       <Dragger {...draggerProps}>
         <p className="ant-upload-drag-icon">
           <InboxOutlined />
         </p>
         <p className="ant-upload-text">点击此处或者拖拽文件至此处上传文件</p>
         <p className="ant-upload-hint">
-          请上传'txt'格式文件，第一行为起始日期，如'20201101'
-          ，后续每一行为一天的数据
+          {props.type == "rainfall" &&
+            "请上传'txt'格式文件，第一行为起始日期，如'20201101'，后续每一行为一天的数据"}
+          {props.type == "landuse" && "请上传'tif'或者'csv'格式文件"}
         </p>
       </Dragger>
       {contextHolder}

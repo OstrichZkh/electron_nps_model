@@ -45,6 +45,7 @@ export const updateStatusAsync = (payload: updateType) => {
     let state = getState()
     let newPayload = { projectName: state.dataManagementReducer.curProjectInfo.projectName, payload }
     let updatedInfo = await window.electronAPI.updateProjectInfo(newPayload);
+    console.log(updatedInfo);
     dispatch(updateStatus(updatedInfo))
   }
 }

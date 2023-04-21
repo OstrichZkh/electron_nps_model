@@ -183,6 +183,7 @@ async function createNewProject() {
       let prjectInfos = JSON.parse(fs.readFileSync(projectInfoJson))
       prjectInfos = [projectInfo, ...prjectInfos]
       fs.writeFileSync(projectInfoJson, JSON.stringify(prjectInfos))
+      fs.mkdirSync(path.join(ProjectPath, 'database'))
     }
     return ProjectPath
   }
@@ -297,15 +298,14 @@ function createWindow() {
     return updatedInfo
   })
   ipcMain.handle('uploadFile', (e, payload) => {
-    console.log(payload);
     const { filePath, type } = payload
     let pyPath = './src/pycode/updateBasicData.py'
     // 回调函数的返回值不能作为外层函数的返回值，需要再包裹一层Promise
     return new Promise((resolve, reject) => {
       if (payload.type == 'rainfall') {
         // 导入降雨数据并进行统计
-        fs.copyFileSync(filePath, path.join(curProjectPath, 'rainfall.txt'))
-        const py = spawn('python', [pyPath, curProjectPath, path.join(__dirname, './projectInfo.json')])
+        fs.copyFileSync(filePath, path.join(curProjectPath, 'database', 'rainfall.txt'))
+        const py = spawn('python', [pyPath, 'rainfall', curProjectPath, path.join(__dirname, './projectInfo.json')])
         py.stdout.on('data', function (rainfallInfo) {
           if (rainfallInfo == 'err' || rainfallInfo.toString() == 'err') {
             reject({
@@ -314,7 +314,7 @@ function createWindow() {
             })
           }
           updateStatus([
-            { target: ['rainfall', 'value'], value: rainfallInfo.toString() },
+            { target: ['rainfall', 'value'], value: rainfallInfo.toString().replace(/'/g, '"') },
             { target: ['rainfall', 'state'], value: true }
           ])
           resolve({
@@ -323,7 +323,26 @@ function createWindow() {
           })
         })
 
-      } else {
+      } else if (payload.type == 'landuse') {
+        fs.copyFileSync(filePath, path.join(curProjectPath, 'database', 'landuse.tif'))
+        const py = spawn('python', [pyPath, 'landuse', curProjectPath, path.join(__dirname, './projectInfo.json')])
+        py.stdout.on('data', function (dict) {
+          if (dict.toString() == 'err') {
+            reject({
+              status: 400,
+              msg: 'error'
+            })
+          }
+          curProjectInfo.landUse.counts = JSON.parse(dict.toString())
+          updataStatusWithEntireInfo(curProjectInfo)
+          resolve({
+            status: 200,
+            msg: curProjectInfo
+          })
+        })
+      }
+
+      else {
         reject({
           status: 400,
           msg: 'rainfallErr'
