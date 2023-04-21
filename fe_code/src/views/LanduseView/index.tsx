@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Title from "../../components/Title";
 import styled from "styled-components";
 import FileImporter from "../../components/FileImporter";
@@ -50,7 +50,6 @@ function LanduseView() {
     };
     setLuCode([...luCode]);
   };
-
   const handleLuChange = (landuse: string, index: number): void => {
     luCode[index] = {
       ...luCode[index],
@@ -67,8 +66,12 @@ function LanduseView() {
     setLanduseOptions(landuseOptions);
   };
   const deleteItem = (idx: number): void => {
-    luCode.splice(idx, 1);
-    setLuCode([...luCode]);
+    let newLuCode = luCode.filter((item, _idx) => {
+      return _idx !== idx;
+    });
+    /* 切忌使用以下方法原地修改状态数组
+    luCode.splice(idx, 1); */
+    setLuCode(newLuCode);
   };
   const addItem = (): void => {
     setLuCode([
@@ -91,6 +94,9 @@ function LanduseView() {
       message.error(`格式错误，请检查！`);
     }
   };
+  useEffect(() => {
+    console.log("curProjectInfoUpdate");
+  }, [JSON.stringify(curProjectInfo)]);
   return (
     <LanduseViewBox>
       <Title title="土地利用类型数据" />
@@ -167,6 +173,17 @@ function LanduseView() {
           onClick={submitItem}
         >
           提交
+        </Button>
+        <Button
+          style={{
+            width: 120,
+            fontSize: "1.2rem",
+            lineHeight: "100%",
+            margin: "auto 1rem",
+          }}
+          size="large"
+        >
+          统计
         </Button>
       </DisplayBox>
       {contextHolder}
