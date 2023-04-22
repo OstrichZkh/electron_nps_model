@@ -333,6 +333,7 @@ function createWindow() {
               msg: 'error'
             })
           }
+          curProjectInfo.landUse.state = true
           curProjectInfo.landUse.counts = JSON.parse(dict.toString())
           updataStatusWithEntireInfo(curProjectInfo)
           resolve({

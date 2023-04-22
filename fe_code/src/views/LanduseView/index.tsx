@@ -5,6 +5,7 @@ import FileImporter from "../../components/FileImporter";
 import { useSelector, useDispatch } from "react-redux";
 import { Select, Input, Button, message } from "antd";
 import { updateStatusAsync } from "../../store/features/dataManagementSlice.ts";
+import * as echarts from "echarts";
 
 const LanduseViewBox = styled.div`
   padding: 1rem;
@@ -42,13 +43,22 @@ function LanduseView() {
     { value: "sloping", label: "坡耕地" },
     { value: "construct", label: "建设用地" },
   ]);
+  let [echartsOptions, setEchartsOptions]: [any, any] = useState();
   const handleCodeChange = (e: any, index: number): void => {
     const { value: inputValue } = e.target;
-    luCode[index] = {
-      ...luCode[index],
+    if (Number.isNaN(+inputValue)) {
+      message.error("请输入数字！");
+      return;
+    }
+    let newLuCode = [...luCode];
+    let newCode = {
+      ...newLuCode[index],
       code: Number(inputValue),
     };
-    setLuCode([...luCode]);
+
+    newLuCode[index] = newCode;
+    setLuCode([...newLuCode]);
+    message.success("修改成功");
   };
   const handleLuChange = (landuse: string, index: number): void => {
     luCode[index] = {
@@ -56,14 +66,6 @@ function LanduseView() {
       type: landuse,
     };
     setLuCode([...luCode]);
-    landuseOptions = landuseOptions.map((item) => {
-      if (item.value !== landuse) {
-        return item;
-      } else {
-        return { ...item, disabled: true };
-      }
-    });
-    setLanduseOptions(landuseOptions);
   };
   const deleteItem = (idx: number): void => {
     let newLuCode = luCode.filter((item, _idx) => {
@@ -94,9 +96,72 @@ function LanduseView() {
       message.error(`格式错误，请检查！`);
     }
   };
+  const calLu = (): void => {
+    let validate = curProjectInfo.landUse.code.every((item) => {
+      return (
+        Object.keys(curProjectInfo.landUse.counts).indexOf(item.code + "") !==
+        -1
+      );
+    });
+    if (!validate) {
+      message.error("请检查tif文件与表格内编号是否匹配！");
+    } else {
+      const options = curProjectInfo.landUse.code.map((item, index) => {
+        let name: string;
+        switch (item.type) {
+          case "forest":
+            name = "林地";
+            break;
+          case "paddy":
+            name = "水田";
+            break;
+          case "water":
+            name = "水体";
+            break;
+          case "sloping":
+            name = "坡耕地";
+            break;
+          case "construct":
+            name = "建设用地";
+            break;
+        }
+
+        return {
+          value: curProjectInfo.landUse.counts[item.code],
+          name: name,
+        };
+      });
+      setEchartsOptions({
+        title: {
+          text: "土地利用类型",
+          left: "center",
+          top: "center",
+        },
+        series: [
+          {
+            type: "pie",
+            data: options,
+            radius: ["40%", "70%"],
+          },
+        ],
+      });
+    }
+  };
   useEffect(() => {
-    console.log("curProjectInfoUpdate");
-  }, [JSON.stringify(curProjectInfo)]);
+    if (echartsOptions) {
+      let myChart = echarts.init(
+        document.querySelector(".echarts-landuse") as HTMLElement
+      );
+      window.onresize = function () {
+        myChart.resize();
+      };
+      myChart.setOption(echartsOptions);
+    }
+  }, [JSON.stringify(echartsOptions)]);
+  useEffect(() => {
+    calLu();
+  }, []);
+  useEffect(() => {}, [JSON.stringify(curProjectInfo)]);
   return (
     <LanduseViewBox>
       <Title title="土地利用类型数据" />
@@ -182,10 +247,19 @@ function LanduseView() {
             margin: "auto 1rem",
           }}
           size="large"
+          onClick={calLu}
         >
           统计
         </Button>
       </DisplayBox>
+      <div
+        style={{
+          height: "30rem",
+          width: "30rem",
+          margin: "1rem",
+        }}
+        className="echarts-landuse"
+      ></div>
       {contextHolder}
     </LanduseViewBox>
   );
