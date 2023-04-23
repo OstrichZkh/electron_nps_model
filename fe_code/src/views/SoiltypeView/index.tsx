@@ -185,7 +185,8 @@ function SoiltypeView() {
       kValue: Number(k),
     };
     newSoiltypeCode[index] = newCode;
-    setSoiltypeCode([...newSoiltypeCode]);
+    console.log(soiltypeCode, newSoiltypeCode);
+    setSoiltypeCode(newSoiltypeCode);
     message.success("修改成功");
   };
 
@@ -243,7 +244,7 @@ function SoiltypeView() {
       <DisplayBox>
         {soiltypeCode.map((item, index) => {
           return (
-            <CodeItemBox key={item.type}>
+            <CodeItemBox key={index}>
               <p>土壤类型{index + 1}</p>
               <Cascader
                 onChange={(e) => {

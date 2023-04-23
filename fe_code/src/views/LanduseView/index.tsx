@@ -97,6 +97,12 @@ function LanduseView() {
     }
   };
   const calLu = (): void => {
+    if (
+      !curProjectInfo.landUse ||
+      !Array.isArray(curProjectInfo.landUse.code)
+    ) {
+      return;
+    }
     let validate = curProjectInfo.landUse.code.every((item) => {
       return (
         Object.keys(curProjectInfo.landUse.counts).indexOf(item.code + "") !==
