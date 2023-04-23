@@ -7,17 +7,18 @@ from osgeo import gdal
 import numpy as np
 import pandas as pd
 # os.system('chcp 65001')
-# type = sys.argv[1]
-# filePath = sys.argv[2]
-# jsonPath = sys.argv[3]
-# projectName = sys.argv[4]
-# projectName = filePath.split('\\')[-1]
-
-type = 'landuse'
-filePath = r'E:\webplatform\exp1'
-jsonPath = r'E:\webplatform\fe_code\projectInfo.json'
 os.environ['PROJ_LIB'] = r'C:\Users\yezouhua\AppData\Local\Programs\Python\Python39\Lib\site-packages\pyproj\proj_dir\share\proj'
+
+type = sys.argv[1]
+filePath = sys.argv[2]
+jsonPath = sys.argv[3]
+# projectName = sys.argv[4]
 projectName = filePath.split('\\')[-1]
+#
+# type = 'landuse'
+# filePath = r'E:\webplatform\exp1'
+# jsonPath = r'E:\webplatform\fe_code\projectInfo.json'
+# projectName = filePath.split('\\')[-1]
 
 try:
     if type == 'rainfall':

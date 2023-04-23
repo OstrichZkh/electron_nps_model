@@ -134,7 +134,7 @@ async function createNewProject() {
           state: false,
           grids: 0,
         },
-        soilType: {
+        soiltype: {
           state: false,
           grids: 0,
         },
@@ -270,9 +270,12 @@ function createWindow() {
   }
   ipcMain.handle('requireProjectInfo', () => {
     let data = JSON.parse(fs.readFileSync(projectInfoJson))
-    curProjectInfo = data[0]
-    curProjectPath = curProjectInfo.projectPath
-    return data
+    if (data && data.length) {
+      curProjectInfo = data[0]
+      curProjectPath = curProjectInfo.projectPath
+      return data
+    }
+
   })
   ipcMain.handle('createNewProject', createNewProject)
   ipcMain.handle('deleteProject', (e, payload) => {
@@ -307,20 +310,23 @@ function createWindow() {
         fs.copyFileSync(filePath, path.join(curProjectPath, 'database', 'rainfall.txt'))
         const py = spawn('python', [pyPath, 'rainfall', curProjectPath, path.join(__dirname, './projectInfo.json')])
         py.stdout.on('data', function (rainfallInfo) {
-          if (rainfallInfo == 'err' || rainfallInfo.toString() == 'err') {
+          console.log(rainfallInfo.toString().substr(0, 3), rainfallInfo.toString().substr(0, 3) == 'err');
+          if (rainfallInfo == 'err' || rainfallInfo.toString().substr(0, 3) == 'err') {
             reject({
               status: 400,
               msg: 'rainfallErr'
             })
+          } else {
+            updateStatus([
+              { target: ['rainfall', 'value'], value: rainfallInfo.toString().replace(/'/g, '"') },
+              { target: ['rainfall', 'state'], value: true }
+            ])
+            resolve({
+              status: 200,
+              msg: curProjectInfo
+            })
           }
-          updateStatus([
-            { target: ['rainfall', 'value'], value: rainfallInfo.toString().replace(/'/g, '"') },
-            { target: ['rainfall', 'state'], value: true }
-          ])
-          resolve({
-            status: 200,
-            msg: curProjectInfo
-          })
+
         })
 
       } else if (payload.type == 'landuse') {

@@ -60,8 +60,9 @@ const FileImporter = (props: IProps) => {
           filePath: fileList[0].originFileObj.path,
           type: props.type,
         });
-
+        console.log(res);
         if (res.status == 200) {
+          console.log("success");
           messageApi.open({
             type: "success",
             content: "上传成功！",

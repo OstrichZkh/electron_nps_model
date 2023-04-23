@@ -181,6 +181,7 @@ function SoiltypeView() {
     let newSoiltypeCode = [...soiltypeCode];
     let newCode = {
       ...newSoiltypeCode[index],
+      type: e,
       kValue: Number(k),
     };
     newSoiltypeCode[index] = newCode;
@@ -224,6 +225,8 @@ function SoiltypeView() {
     let validate = soiltypeCode.every((item) => {
       return item.type && item.code && typeof item.code == "number";
     });
+    console.log(validate);
+
     if (validate) {
       let payload = [{ target: ["soiltype", "code"], value: soiltypeCode }];
       dispatch(updateStatusAsync(payload));
@@ -253,6 +256,7 @@ function SoiltypeView() {
                 options={options}
                 placeholder="Please select"
                 size="large"
+                defaultValue={item.type}
               />
               <Input
                 style={{

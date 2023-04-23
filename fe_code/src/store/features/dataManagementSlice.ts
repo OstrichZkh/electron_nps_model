@@ -19,6 +19,11 @@ const dataManagementSlice = createSlice({
       state.curProjectInfo = payload
     },
     getStatus(state: any, { payload }) {
+      if (!payload) {
+        state.allProjectInfos = []
+        state.curProjectInfo = {}
+        return
+      }
       state.allProjectInfos = payload
       state.curProjectInfo = state.allProjectInfos.sort((a, b) => b.lastSavedStamp - a.lastSavedStamp)[0]
     },
