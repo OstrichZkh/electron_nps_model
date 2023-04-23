@@ -27,7 +27,7 @@ function LanduseView() {
   const dispatch = useDispatch();
   let { curProjectInfo } = useSelector((state) => state.dataManagementReducer);
   let [luCode, setLuCode] = useState(
-    curProjectInfo.landUse.code
+    curProjectInfo.landUse && curProjectInfo.landUse.code
       ? curProjectInfo.landUse.code
       : [
           {

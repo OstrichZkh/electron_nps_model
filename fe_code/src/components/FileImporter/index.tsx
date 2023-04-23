@@ -12,6 +12,7 @@ interface IProps {
     | "rainfall"
     | "DEM"
     | "landuse"
+    | "soiltype"
     | "D8"
     | "C_factor"
     | "L_factor"
@@ -119,7 +120,8 @@ const FileImporter = (props: IProps) => {
         <p className="ant-upload-hint">
           {props.type == "rainfall" &&
             "请上传'txt'格式文件，第一行为起始日期，如'20201101'，后续每一行为一天的数据"}
-          {props.type == "landuse" && "请上传'tif'或者'csv'格式文件"}
+          {(props.type == "landuse" || props.type == "soiltype") &&
+            "请上传'tif'或者'csv'格式文件"}
         </p>
       </Dragger>
       {contextHolder}
