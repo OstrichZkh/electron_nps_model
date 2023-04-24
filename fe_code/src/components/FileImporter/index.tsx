@@ -60,7 +60,6 @@ const FileImporter = (props: IProps) => {
           filePath: fileList[0].originFileObj.path,
           type: props.type,
         });
-        console.log(res);
         if (res.status == 200) {
           console.log("success");
           messageApi.open({
@@ -111,6 +110,7 @@ const FileImporter = (props: IProps) => {
     },
   };
   const [messageApi, contextHolder] = message.useMessage();
+
   return (
     <FileBox>
       <Dragger {...draggerProps}>
@@ -120,9 +120,24 @@ const FileImporter = (props: IProps) => {
         <p className="ant-upload-text">点击此处或者拖拽文件至此处上传文件</p>
         <p className="ant-upload-hint">
           {props.type == "rainfall" &&
-            "请上传'txt'格式文件，第一行为起始日期，如'20201101'，后续每一行为一天的数据"}
-          {(props.type == "landuse" || props.type == "soiltype") &&
-            "请上传'tif'或者'csv'格式文件"}
+            (curProjectInfo.rainfall.state == true
+              ? "数据已上传，可再次上传数据进行覆盖"
+              : "请上传'txt'格式文件，第一行为起始日期，如'20201101'，后续每一行为一天的数据")}
+
+          {props.type == "landuse" &&
+            (curProjectInfo.landUse.state == true
+              ? "数据已上传，可再次上传数据进行覆盖"
+              : "请上传'tif'或者'csv'格式文件")}
+
+          {props.type == "soiltype" &&
+            (curProjectInfo.soiltype.state == true
+              ? "数据已上传，可再次上传数据进行覆盖"
+              : "请上传'tif'或者'csv'格式文件")}
+
+          {props.type == "DEM" &&
+            (curProjectInfo.DEM.state == true
+              ? "数据已上传，可再次上传数据进行覆盖"
+              : "请上传'tif'或者'csv'格式文件")}
         </p>
       </Dragger>
       {contextHolder}

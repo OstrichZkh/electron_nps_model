@@ -9,14 +9,14 @@ import pandas as pd
 # os.system('chcp 65001')
 os.environ['PROJ_LIB'] = r'C:\Users\yezouhua\AppData\Local\Programs\Python\Python39\Lib\site-packages\pyproj\proj_dir\share\proj'
 
-type = sys.argv[1]
-filePath = sys.argv[2]
-jsonPath = sys.argv[3]
+# type = sys.argv[1]
+# filePath = sys.argv[2]
+# jsonPath = sys.argv[3]
 # projectName = sys.argv[4]
 #
-# type = 'soiltype'
-# filePath = r'E:\webplatform\asd'
-# jsonPath = r'E:\webplatform\fe_code\projectInfo.json'
+type = 'DEM'
+filePath = r'E:\webplatform\asd'
+jsonPath = r'E:\webplatform\fe_code\projectInfo.json'
 projectName = filePath.split('\\')[-1]
 
 
@@ -202,7 +202,6 @@ try:
         projInfo = json.load(open(jsonPath))
         print(json.dumps(luDict))
     elif type == 'soiltype':
-
         sourcePath = filePath + r'\database\soiltype.tif'
         data2 = load_img_to_array(sourcePath)
         output2 = pd.DataFrame(data2)
@@ -221,5 +220,36 @@ try:
                     luDict[str(code)] = 1
         projInfo = json.load(open(jsonPath))
         print(json.dumps(luDict))
+    elif type == 'DEM':
+        sourcePath = filePath + r'\database\DEM.tif'
+        data2 = load_img_to_array(sourcePath)
+        output2 = pd.DataFrame(data2)
+        output2.to_csv(filePath + r'\database\DEM.csv')
+        DEMDF = pd.read_csv(filePath + r'\database\DEM.csv', index_col=0).values
+        res = 0
+        DEMArr = []
+        for x in range(0, len(DEMDF)):
+            for y in range(0, len(DEMDF[0])):
+                dem = DEMDF[x][y]
+                if dem > 0 and dem < 8000:
+                    DEMArr.append(dem)
+        DEMArr.sort()
+        minDEM = DEMArr[0]
+        maxDEM = DEMArr[len(DEMArr) - 1]
+        gap = (maxDEM - minDEM) / 10
+        countArr = []
+        demArr = []
+        for i in range(1, 11):
+            nextMax = gap * i + minDEM
+
+            demArr.append('%s-%s' % (int(nextMax - gap), int(nextMax)))
+            count = 0
+            while DEMArr.pop(0) < nextMax:
+                count += 1
+            countArr.append(count)
+        print(json.dumps({
+            'DEM': demArr,
+            'count': countArr
+        }))
 except:
     print('err')

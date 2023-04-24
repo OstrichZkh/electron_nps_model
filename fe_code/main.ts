@@ -366,6 +366,24 @@ function createWindow() {
             msg: curProjectInfo
           })
         })
+      } else if (payload.type == 'DEM') {
+        fs.copyFileSync(filePath, path.join(curProjectPath, 'database', 'soiltype.tif'))
+        const py = spawn('python', [pyPath, 'DEM', curProjectPath, path.join(__dirname, './projectInfo.json')])
+        py.stdout.on('data', function (dict) {
+          if (dict.toString() == 'err') {
+            reject({
+              status: 400,
+              msg: 'error'
+            })
+          }
+          curProjectInfo.DEM.state = true
+          curProjectInfo.DEM.counts = JSON.parse(dict.toString())
+          updataStatusWithEntireInfo(curProjectInfo)
+          resolve({
+            status: 200,
+            msg: curProjectInfo
+          })
+        })
       }
       else {
         reject({
