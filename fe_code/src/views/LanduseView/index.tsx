@@ -109,6 +109,7 @@ function LanduseView() {
         -1
       );
     });
+
     if (!validate) {
       message.error("请检查tif文件与表格内编号是否匹配！");
     } else {
@@ -137,6 +138,7 @@ function LanduseView() {
           name: name,
         };
       });
+
       setEchartsOptions({
         title: {
           text: "土地利用类型",
@@ -164,10 +166,11 @@ function LanduseView() {
       myChart.setOption(echartsOptions);
     }
   }, [JSON.stringify(echartsOptions)]);
+
   useEffect(() => {
     calLu();
   }, []);
-  useEffect(() => {}, [JSON.stringify(curProjectInfo)]);
+
   return (
     <LanduseViewBox>
       <Title title="土地利用类型数据" />

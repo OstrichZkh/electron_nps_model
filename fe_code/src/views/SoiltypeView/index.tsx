@@ -31,6 +31,8 @@ function SoiltypeView() {
   const [messageApi, contextHolder] = message.useMessage();
   const dispatch = useDispatch();
   let { curProjectInfo } = useSelector((state) => state.dataManagementReducer);
+  let [echartsOptions, setEchartsOptions]: [any, any] = useState();
+
   let [soiltypeCode, setSoiltypeCode] = useState(
     curProjectInfo.soiltype && curProjectInfo.soiltype.code
       ? curProjectInfo.soiltype.code
@@ -226,7 +228,6 @@ function SoiltypeView() {
     let validate = soiltypeCode.every((item) => {
       return item.type && item.code && typeof item.code == "number";
     });
-    console.log(validate);
 
     if (validate) {
       let payload = [{ target: ["soiltype", "code"], value: soiltypeCode }];
@@ -236,6 +237,59 @@ function SoiltypeView() {
       message.error(`格式错误，请检查！`);
     }
   };
+  const calSoiltype = (): void => {
+    if (
+      !curProjectInfo.soiltype ||
+      !Array.isArray(curProjectInfo.soiltype.code)
+    ) {
+      return;
+    }
+    let validate = curProjectInfo.soiltype.code.every((item) => {
+      return (
+        Object.keys(curProjectInfo.soiltype.counts).indexOf(item.code + "") !==
+        -1
+      );
+    });
+    if (!validate) {
+      message.error("请检查tif文件与表格内编号是否匹配！");
+    } else {
+      const options = curProjectInfo.soiltype.code.map((item, index) => {
+        return {
+          value: curProjectInfo.soiltype.counts[item.code],
+          name: item.type[1],
+        };
+      });
+      setEchartsOptions({
+        title: {
+          text: "土壤类型",
+          left: "center",
+          top: "center",
+        },
+        series: [
+          {
+            type: "pie",
+            data: options,
+            radius: ["40%", "70%"],
+          },
+        ],
+      });
+    }
+  };
+  useEffect(() => {
+    if (echartsOptions) {
+      let myChart = echarts.init(
+        document.querySelector(".echarts-soiltype") as HTMLElement
+      );
+      window.onresize = function () {
+        myChart.resize();
+      };
+      myChart.setOption(echartsOptions);
+    }
+  }, [JSON.stringify(echartsOptions)]);
+
+  useEffect(() => {
+    calSoiltype();
+  }, []);
 
   return (
     <SoiltypeViewBox>
@@ -330,11 +384,19 @@ function SoiltypeView() {
             margin: "auto 1rem",
           }}
           size="large"
-          // onClick={calLu}
+          onClick={calSoiltype}
         >
           统计
         </Button>
       </DisplayBox>
+      <div
+        style={{
+          height: "30rem",
+          width: "30rem",
+          margin: "1rem",
+        }}
+        className="echarts-soiltype"
+      ></div>
       {contextHolder}
     </SoiltypeViewBox>
   );

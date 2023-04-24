@@ -13,13 +13,74 @@ type = sys.argv[1]
 filePath = sys.argv[2]
 jsonPath = sys.argv[3]
 # projectName = sys.argv[4]
-projectName = filePath.split('\\')[-1]
 #
-# type = 'landuse'
-# filePath = r'E:\webplatform\exp1'
+# type = 'soiltype'
+# filePath = r'E:\webplatform\asd'
 # jsonPath = r'E:\webplatform\fe_code\projectInfo.json'
-# projectName = filePath.split('\\')[-1]
+projectName = filePath.split('\\')[-1]
 
+
+def load_img_to_array(img_file_path):
+    dataset = gdal.Open(img_file_path)  # 读取栅格数据
+    Bands = np.array([dataset.RasterCount])
+    # 判断是否读取到数据
+    if dataset is None:
+        sys.exit(1)  # 退出
+    projection = dataset.GetProjection()  # 投影
+    transform = dataset.GetGeoTransform()  # 几何信息
+    array_channel = 0  # 数组从通道从0开始
+
+    # 读取Bands列表中指定的波段
+    for band in Bands:  # 图片波段从1开始
+        band = int(band)
+        srcband = dataset.GetRasterBand(band)  # 获取栅格数据集的波段
+        if srcband is None:
+            continue
+        #  一个通道转成一个数组（5888,5888）
+        arr = srcband.ReadAsArray()
+    return arr
+
+
+def cellaround(x, y, data):
+    xaround = np.zeros((8, 1))
+    xaround[0] = data[x + 1, y]  # 右
+    xaround[1] = data[x + 1, y + 1]  # 右下
+    xaround[2] = data[x, y + 1]  # 下
+    xaround[3] = data[x - 1, y + 1]  # 左下
+    xaround[4] = data[x - 1, y]  # 左
+    xaround[5] = data[x - 1, y - 1]  # 左上
+    xaround[6] = data[x, y - 1]  # 上
+    xaround[7] = data[x + 1, y - 1]  # 右上
+    return xaround
+
+
+def sinkcount(data):
+    nrow, ncol = data.shape
+    nodata = np.min(data)
+    sinkcount = 0
+    for i in range(1, nrow - 1):
+        for j in range(1, ncol - 1):
+            x = data[i, j]
+            if x != nodata:
+                if ((cellaround(i, j, data) - x) > 0).all() == 1:
+                    sinkcount += 1
+    return sinkcount
+
+
+def sinkfill(data, zlimit):
+    """
+    fill: 填洼
+    zlimit: 允许的最大坡降值
+    """
+    nrow, ncol = data.shape
+    nodata = np.min(data)
+    for i in range(1, nrow - 1):
+        for j in range(1, ncol - 1):
+            x = data[i, j]
+            if x != nodata:
+                if ((cellaround(i, j, data) - x) > zlimit).all() == 1:
+                    data[i, j] = np.min(cellaround(i, j, data))
+    return data
 try:
     if type == 'rainfall':
 
@@ -121,66 +182,32 @@ try:
             })
         print(rainfallList)
     elif type == 'landuse':
-        def load_img_to_array(img_file_path):
-            dataset = gdal.Open(img_file_path)  # 读取栅格数据
-            Bands = np.array([dataset.RasterCount])
-            # 判断是否读取到数据
-            if dataset is None:
-                sys.exit(1)  # 退出
-            projection = dataset.GetProjection()  # 投影
-            transform = dataset.GetGeoTransform()  # 几何信息
-            array_channel = 0  # 数组从通道从0开始
 
-            # 读取Bands列表中指定的波段
-            for band in Bands:  # 图片波段从1开始
-                band = int(band)
-                srcband = dataset.GetRasterBand(band)  # 获取栅格数据集的波段
-                if srcband is None:
-                    continue
-                #  一个通道转成一个数组（5888,5888）
-                arr = srcband.ReadAsArray()
-            return arr
-        def cellaround(x, y, data):
-            xaround = np.zeros((8, 1))
-            xaround[0] = data[x + 1, y]  # 右
-            xaround[1] = data[x + 1, y + 1]  # 右下
-            xaround[2] = data[x, y + 1]  # 下
-            xaround[3] = data[x - 1, y + 1]  # 左下
-            xaround[4] = data[x - 1, y]  # 左
-            xaround[5] = data[x - 1, y - 1]  # 左上
-            xaround[6] = data[x, y - 1]  # 上
-            xaround[7] = data[x + 1, y - 1]  # 右上
-            return xaround
-        def sinkcount(data):
-            nrow, ncol = data.shape
-            nodata = np.min(data)
-            sinkcount = 0
-            for i in range(1, nrow - 1):
-                for j in range(1, ncol - 1):
-                    x = data[i, j]
-                    if x != nodata:
-                        if ((cellaround(i, j, data) - x) > 0).all() == 1:
-                            sinkcount += 1
-            return sinkcount
-        def sinkfill(data, zlimit):
-            """
-            fill: 填洼
-            zlimit: 允许的最大坡降值
-            """
-            nrow, ncol = data.shape
-            nodata = np.min(data)
-            for i in range(1, nrow - 1):
-                for j in range(1, ncol - 1):
-                    x = data[i, j]
-                    if x != nodata:
-                        if ((cellaround(i, j, data) - x) > zlimit).all() == 1:
-                            data[i, j] = np.min(cellaround(i, j, data))
-            return data
         sourcePath = filePath + r'\database\landuse.tif'
         data2 = load_img_to_array(sourcePath)
         output2 = pd.DataFrame(data2)
         output2.to_csv(filePath + r'\database\landuse.csv')
         luDF = pd.read_csv(filePath + r'\database\landuse.csv', index_col=0).values
+        res = 0
+        luDict = {}
+        for x in range(0, len(luDF)):
+            for y in range(0, len(luDF[0])):
+                if luDF[x][y] > -1000:
+                    res += 1
+                code = luDF[x][y]
+                if str(code) in luDict:
+                    luDict[str(code)] += 1
+                else:
+                    luDict[str(code)] = 1
+        projInfo = json.load(open(jsonPath))
+        print(json.dumps(luDict))
+    elif type == 'soiltype':
+
+        sourcePath = filePath + r'\database\soiltype.tif'
+        data2 = load_img_to_array(sourcePath)
+        output2 = pd.DataFrame(data2)
+        output2.to_csv(filePath + r'\database\soiltype.csv')
+        luDF = pd.read_csv(filePath + r'\database\soiltype.csv', index_col=0).values
         res = 0
         luDict = {}
         for x in range(0, len(luDF)):

@@ -348,8 +348,25 @@ function createWindow() {
             msg: curProjectInfo
           })
         })
+      } else if (payload.type == 'soiltype') {
+        fs.copyFileSync(filePath, path.join(curProjectPath, 'database', 'soiltype.tif'))
+        const py = spawn('python', [pyPath, 'soiltype', curProjectPath, path.join(__dirname, './projectInfo.json')])
+        py.stdout.on('data', function (dict) {
+          if (dict.toString() == 'err') {
+            reject({
+              status: 400,
+              msg: 'error'
+            })
+          }
+          curProjectInfo.soiltype.state = true
+          curProjectInfo.soiltype.counts = JSON.parse(dict.toString())
+          updataStatusWithEntireInfo(curProjectInfo)
+          resolve({
+            status: 200,
+            msg: curProjectInfo
+          })
+        })
       }
-
       else {
         reject({
           status: 400,
