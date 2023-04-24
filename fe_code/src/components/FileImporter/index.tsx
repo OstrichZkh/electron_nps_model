@@ -138,6 +138,21 @@ const FileImporter = (props: IProps) => {
             (curProjectInfo.DEM.state == true
               ? "数据已上传，可再次上传数据进行覆盖"
               : "请上传'tif'或者'csv'格式文件")}
+
+          {props.type == "C_factor" &&
+            (curProjectInfo.rusle.C_factor == true
+              ? "数据已上传，可再次上传数据进行覆盖"
+              : "请上传'tif'或者'csv'格式文件")}
+
+          {props.type == "L_factor" &&
+            (curProjectInfo.rusle.L_factor == true
+              ? "数据已上传，可再次上传数据进行覆盖"
+              : "请上传'tif'或者'csv'格式文件")}
+
+          {props.type == "S_factor" &&
+            (curProjectInfo.rusle.S_factor == true
+              ? "数据已上传，可再次上传数据进行覆盖"
+              : "请上传'tif'或者'csv'格式文件")}
         </p>
       </Dragger>
       {contextHolder}

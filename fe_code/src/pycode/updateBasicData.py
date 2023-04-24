@@ -251,5 +251,11 @@ try:
             'DEM': demArr,
             'count': countArr
         }))
+    elif type == 'C_factor' or type == 'L_factor' or type == 'S_factor':
+        sourcePath = filePath + r'\database\{}.tif'.format(type)
+        data2 = load_img_to_array(sourcePath)
+        output2 = pd.DataFrame(data2)
+        output2.to_csv(filePath + r'\database\{}.csv'.format(type))
+        print('ok')
 except:
     print('err')

@@ -384,6 +384,23 @@ function createWindow() {
             msg: curProjectInfo
           })
         })
+      } else if (['C_factor', 'L_factor', 'S_factor'].indexOf(payload.type) !== -1) {
+        fs.copyFileSync(filePath, path.join(curProjectPath, 'database', 'soiltype.tif'))
+        const py = spawn('python', [pyPath, payload.type, curProjectPath, path.join(__dirname, './projectInfo.json')])
+        py.stdout.on('data', function (dict) {
+          if (dict.toString() == 'err') {
+            reject({
+              status: 400,
+              msg: 'error'
+            })
+          }
+          curProjectInfo.rusle[payload.type] = true
+          updataStatusWithEntireInfo(curProjectInfo)
+          resolve({
+            status: 200,
+            msg: curProjectInfo
+          })
+        })
       }
       else {
         reject({
