@@ -51,7 +51,6 @@ function SimRangeView() {
     });
   };
 
-
   return (
     <SimRangeBox>
       <Title title="模拟期选择" />

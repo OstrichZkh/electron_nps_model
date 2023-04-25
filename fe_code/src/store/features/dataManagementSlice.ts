@@ -45,7 +45,7 @@ export const getProjectInfoAsync = () => {
   }
 }
 
-export const updateStatusAsync = (payload: updateType) => {
+export const updateStatusAsync = (payload: updateType): any => {
   return async (dispatch: Function, getState: Function): Promise<void> => {
     let state = getState()
     let newPayload = { projectName: state.dataManagementReducer.curProjectInfo.projectName, payload }
