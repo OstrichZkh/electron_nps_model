@@ -34,6 +34,7 @@ const RusleCalView = (props: IProps) => {
   const { curProjectInfo } = useSelector((state: any) => {
     return state.dataManagementReducer;
   });
+  const [loading, setLoading] = useState(false);
   const dataCondition = useMemo(() => {
     let conditions: IConditions = { imported: [], unimported: [] };
     if (curProjectInfo.rainfall.state) {
@@ -65,7 +66,9 @@ const RusleCalView = (props: IProps) => {
     return conditions;
   }, [JSON.stringify(curProjectInfo)]);
   const rusleCal = async () => {
+    setLoading(true);
     let res = await window.electronAPI.rusleCal();
+    setLoading(false);
     if (res == "unmatch") {
       messageApi.open({
         type: "error",
@@ -151,6 +154,7 @@ const RusleCalView = (props: IProps) => {
         size="large"
         style={{ width: "12rem", marginTop: "1rem" }}
         onClick={rusleCal}
+        loading={loading}
       >
         计算水土流失量
       </Button>
