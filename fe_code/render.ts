@@ -6,5 +6,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteProject: (name) => ipcRenderer.invoke('deleteProject', name),
   updateProjectInfo: (payload) => ipcRenderer.invoke('updateProjectInfo', payload),
   uploadFile: (payload) => ipcRenderer.invoke('uploadFile', payload),
-
+  rusleCal: (payload) => ipcRenderer.invoke('rusleCal', payload),
+  requireRusle: (payload) => ipcRenderer.invoke('requireRusle', payload),
 })

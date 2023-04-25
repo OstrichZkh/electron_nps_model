@@ -385,7 +385,7 @@ function createWindow() {
           })
         })
       } else if (['C_factor', 'L_factor', 'S_factor'].indexOf(payload.type) !== -1) {
-        fs.copyFileSync(filePath, path.join(curProjectPath, 'database', 'soiltype.tif'))
+        fs.copyFileSync(filePath, path.join(curProjectPath, 'database', `${payload.type}.tif`))
         const py = spawn('python', [pyPath, payload.type, curProjectPath, path.join(__dirname, './projectInfo.json')])
         py.stdout.on('data', function (dict) {
           if (dict.toString() == 'err') {
@@ -410,6 +410,34 @@ function createWindow() {
         )
       }
     })
+
+  })
+
+  ipcMain.handle('rusleCal', (e, payload) => {
+    let pyPath = './src/pycode/updateBasicData.py'
+    return new Promise((resolve, reject) => {
+      const py = spawn('python', [pyPath, 'rusleCal', curProjectPath, path.join(__dirname, './projectInfo.json')])
+      py.stdout.on('data', function (data) {
+        if (data.toString() == 'unmatch') {
+          resolve('unmatch')
+        } else if (data.toString() == 'err') {
+          resolve('err')
+        } else {
+          resolve('done')
+        }
+      })
+
+    })
+  })
+  ipcMain.handle('requireRusle', (e, payload) => {
+    try {
+      let info = fs.readFileSync(path.join(curProjectPath, 'database', 'R_factor.txt'))
+      return JSON.parse(info)
+    } catch {
+      console.log('err');
+      return 'err'
+    }
+
 
   })
 
