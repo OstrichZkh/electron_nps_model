@@ -9,6 +9,7 @@ const RusleViewBox = styled.div`
   flex-direction: column;
 `;
 function RusledataView() {
+  
   return (
     <RusleViewBox>
       <Title title="C因子" />

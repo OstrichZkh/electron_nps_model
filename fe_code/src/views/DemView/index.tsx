@@ -3,8 +3,6 @@ import Title from "../../components/Title";
 import styled from "styled-components";
 import FileImporter from "../../components/FileImporter";
 import { useSelector, useDispatch } from "react-redux";
-import { Select, Input, Button, message } from "antd";
-import { updateStatusAsync } from "../../store/features/dataManagementSlice.ts";
 import * as echarts from "echarts";
 
 const LanduseViewBox = styled.div`

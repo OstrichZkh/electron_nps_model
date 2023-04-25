@@ -6,6 +6,11 @@ import LanduseView from "../views/LanduseView";
 import SoiltypeView from "../views/SoiltypeView";
 import DemView from "../views/DemView";
 import RusledataView from "../views/RusleDataView";
+import RusleCalView from "../views/RusleCalView";
+import FertView from "../views/FertView";
+import ParasView from "../views/ParasView";
+import NsgaView from "../views/NsgaView";
+import ModelRunView from "../views/ModelRunView";
 import { lazy } from "react";
 import { Navigate } from "react-router-dom";
 
@@ -56,6 +61,36 @@ const setupRoutes: Routes[] = [
     path: "/setup/rusledata",
     name: "rusledata",
     component: RusledataView,
+    meta: {},
+  },
+  {
+    path: "/setup/ruslecal",
+    name: "ruslecal",
+    component: RusleCalView,
+    meta: {},
+  },
+  {
+    path: "/setup/fert",
+    name: "fert",
+    component: FertView,
+    meta: {},
+  },
+  {
+    path: "/setup/calib",
+    name: "calib",
+    component: ParasView,
+    meta: {},
+  },
+  {
+    path: "/setup/nsga",
+    name: "nsga",
+    component: NsgaView,
+    meta: {},
+  },
+  {
+    path: "/setup/model",
+    name: "model",
+    component: ModelRunView,
     meta: {},
   },
 ];

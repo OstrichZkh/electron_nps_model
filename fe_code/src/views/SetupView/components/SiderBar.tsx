@@ -38,7 +38,7 @@ const items: MenuProps["items"] = [
   ]),
   { type: "divider" },
   getItem("面源污染模拟", "sub2", <SettingOutlined />, [
-    getItem("水土流失情况", "rusle"),
+    getItem("水土流失情况", "ruslecal"),
     getItem("模型参数设置", "parameters", null, [
       getItem("农业措施设置", "fert"),
       getItem("率定参数设置", "calib"),

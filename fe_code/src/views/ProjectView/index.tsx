@@ -105,7 +105,6 @@ const ProjectViewBox = styled.div`
 `;
 
 function ProjectView() {
-  console.log("渲染");
   // 获取公共状态
   let { allProjectInfos, curProjectInfo } = useSelector(
     (state) => state.dataManagementReducer
