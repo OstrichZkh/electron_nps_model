@@ -55,7 +55,7 @@ function DemView() {
       <div
         style={{
           height: "30rem",
-          width: "130rem",
+          width: "80rem",
           margin: "1rem",
         }}
         className="echarts-DEM"

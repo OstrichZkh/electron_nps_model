@@ -1,0 +1,20 @@
+{
+  "name": "webplatform",
+  "version": "1.0.0",
+  "description": "��#\u0000 \u0000e\u0000l\u0000e\u0000c\u0000t\u0000r\u0000o\u0000n\u0000_\u0000n\u0000p\u0000s\u0000_\u0000m\u0000o\u0000d\u0000e\u0000l\u0000 \u0000-d�^i\u0000n\u0000g\u0000\r\u0000 \u0000",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OstrichZkh/electron_nps_model.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/OstrichZkh/electron_nps_model/issues"
+  },
+  "homepage": "https://github.com/OstrichZkh/electron_nps_model#readme"
+}

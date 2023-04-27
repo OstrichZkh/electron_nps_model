@@ -391,8 +391,8 @@ function SoiltypeView() {
       </DisplayBox>
       <div
         style={{
-          height: "30rem",
-          width: "30rem",
+          height: "20rem",
+          width: "20rem",
           margin: "1rem",
         }}
         className="echarts-soiltype"

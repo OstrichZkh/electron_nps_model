@@ -8,4 +8,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   uploadFile: (payload) => ipcRenderer.invoke('uploadFile', payload),
   rusleCal: (payload) => ipcRenderer.invoke('rusleCal', payload),
   requireRusle: (payload) => ipcRenderer.invoke('requireRusle', payload),
+  requireParas: (payload) => ipcRenderer.invoke('requireParas', payload),
+  updateParas: (payload) => ipcRenderer.invoke('updateParas', payload),
 })
