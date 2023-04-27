@@ -76,7 +76,6 @@ const NsgaView = (props: IProps) => {
             defaultValue={nsgaParams.population}
           />
         </Form.Item>
-
         <Form.Item
           label="迭代次数"
           name="iteration"
