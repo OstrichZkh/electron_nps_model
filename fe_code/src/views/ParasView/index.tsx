@@ -234,7 +234,7 @@ const NsgaView: React.FC = () => {
       />
       <Button
         type="primary"
-        style={{ width: 200 }}
+        style={{ width: 201 }}
         size="large"
         onClick={submitParams}
       >
