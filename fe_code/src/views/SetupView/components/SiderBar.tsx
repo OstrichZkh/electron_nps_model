@@ -7,9 +7,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 type MenuItem = Required<MenuProps>["items"][number];
 const SiderBarBox = styled.div`
-  height: 100vh;
   width: 12rem;
   background-color: rgb(244, 245, 247);
+  .inner {
+    position: fixed;
+    background-color: rgb(244, 245, 247);
+    width: 12rem;
+    height: 100vh;
+  }
 `;
 function getItem(
   label: React.ReactNode,
@@ -59,14 +64,16 @@ function SiderBar() {
 
   return (
     <SiderBarBox>
-      <Menu
-        onClick={menuClick}
-        items={items}
-        style={{ width: "12rem" }}
-        defaultSelectedKeys={["1"]}
-        defaultOpenKeys={["sub1"]}
-        mode="inline"
-      />
+      <div className="inner">
+        <Menu
+          onClick={menuClick}
+          items={items}
+          style={{ width: "12rem" }}
+          defaultSelectedKeys={["1"]}
+          defaultOpenKeys={["sub1"]}
+          mode="inline"
+        />
+      </div>
     </SiderBarBox>
   );
 }
