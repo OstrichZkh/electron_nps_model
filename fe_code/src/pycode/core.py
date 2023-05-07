@@ -9,31 +9,24 @@ import math
 import time
 # projectFile = sys.argv[1]
 projectFile = r'E:\webplatform\asd'
-
-with open(projectFile+'\dataInfo.json','r',encoding='utf-8') as fp:
-    projectJson = json.load(fp)
-
+fileList = os.listdir(projectFile+r'\observeData')
 celibratedTarget = []
 celibratedValue = {}
-for key in projectJson['observeData']:
-    if projectJson['observeData'][key]['checked'] == True:
-        celibratedTarget.append(key)
-        path = projectFile + '\\observeData\\'+key+r'.txt'
-        arr = []
-        for line in open(path):
-            arr.append(float(line.replace('\n', '')))
-        celibratedValue[key] = arr
-# celibratedTarget = ['colP']
-# celibratedValue = {
-#     'colP':[0.02,0.009,0.039,0.0575,0.038,0.076],
-#     # 'col':[0.0105,0.0125,0.225,0.162,0.144]
-# }
+for file in fileList:
+    key = file.split('.')[0]
+    #
+    celibratedTarget.append(key)
+    path = "{}\observeData\{}".format(projectFile,file)
+    arr = []
+    for line in open(path):
+        arr.append(float(line.replace('\n', '')))
+    celibratedValue[key] = arr
+
 
 celibratedTarget = ['sedP','solP']
 celibratedValue = {
     'sedP':[0.0275,0.0305,0.047,0.068,0.036,0.045],
     'solP': [0.024, 0.0305, 0.018, 0.033, 0.0305, 0.028],
-
     # 'col':[0.0105,0.0125,0.225,0.162,0.144]
 }
 phDict = {
@@ -43,7 +36,7 @@ phDict = {
 }
 def fillZero(x,y):
     return 'x' + str(x).zfill(4) + 'y' + str(y).zfill(4)
-d8DF = pd.read_csv(projectFile + r'\D8.csv',index_col=0).values
+d8DF = pd.read_csv(projectFile + r'\database\D8.csv',index_col=0).values
 # 传输路径hashmap
 transDict = {}
 Y = len(d8DF)
@@ -109,13 +102,13 @@ with open(projectFile+r'\transDict.json','w+') as file:
 
 
 # C因子
-C = pd.read_csv(projectFile+r'\C_factor.csv',index_col=0).values
+C = pd.read_csv(projectFile+r'\database\C_factor.csv',index_col=0).values
 # P因子
-P = pd.read_csv(projectFile+r'\P_factor.csv',index_col=0).values
+P_10000times = pd.read_csv(projectFile+r'\database\P_factor_10000times.csv',index_col=0).values
 # 坡度
-slope = pd.read_csv(projectFile+r'\slope.csv',index_col=0).values
+slope = pd.read_csv(projectFile+r'\database\slope.csv',index_col=0).values
 # DEM
-demDF = pd.read_csv(projectFile+r'\DEM.csv',index_col=0).values
+demDF = pd.read_csv(projectFile+r'\database\DEM.csv',index_col=0).values
 minDEM = 65535
 maxDEM = 0
 for y in range(0, Y):
@@ -126,7 +119,7 @@ for y in range(0, Y):
             if demDF[y][x] > maxDEM:
                 maxDEM = demDF[y][x]
 # 土地利用数据
-landuseDF = pd.read_csv(projectFile+r'\landUse.csv',index_col=0).values
+landuseDF = pd.read_csv(projectFile+r'\database\landUse.csv',index_col=0).values
 # 赋予code值
 with open(projectFile+'\landuseCode.json','r',encoding='utf-8') as fp:
     landuseDict = json.load(fp)

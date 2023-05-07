@@ -16,8 +16,13 @@ const HomeViewBox = styled.div`
   flex-direction: row;
   .nav-box {
     background-color: rgb(18, 60, 105);
-    height: 100vh;
     width: 4rem;
+    .nav-box-inner {
+      position: fixed;
+      background-color: rgb(18, 60, 105);
+      width: 4rem;
+      height: 100vh;
+    }
     .file-box {
       width: 3rem;
       height: 3rem;
@@ -40,28 +45,32 @@ function HomeView() {
   return (
     <HomeViewBox>
       <div className="nav-box">
-        <Link to="/">
-          <div
-            className="file-box"
+        <div className="nav-box-inner">
+          <Link to="/">
+            <div
+              className="file-box"
+              onClick={() => {
+                changeTab("project");
+              }}
+            >
+              <ReactSVG
+                src={curPage == "project" ? activeFile : unactiveFile}
+              />
+            </div>
+          </Link>
+          <Link
+            to="/setup"
             onClick={() => {
-              changeTab("project");
+              changeTab("setup");
             }}
           >
-            <ReactSVG src={curPage == "project" ? activeFile : unactiveFile} />
-          </div>
-        </Link>
-        <Link
-          to="/setup"
-          onClick={() => {
-            changeTab("setup");
-          }}
-        >
-          <div className="file-box">
-            <ReactSVG
-              src={curPage !== "project" ? activeSetup : unactiveSetup}
-            />
-          </div>
-        </Link>
+            <div className="file-box">
+              <ReactSVG
+                src={curPage !== "project" ? activeSetup : unactiveSetup}
+              />
+            </div>
+          </Link>
+        </div>
       </div>
 
       <div className="page-box">

@@ -264,7 +264,7 @@ function LanduseView() {
       <div
         style={{
           height: "20rem",
-          width: "20rem",
+          width: "30rem",
           margin: "1rem",
         }}
         className="echarts-landuse"

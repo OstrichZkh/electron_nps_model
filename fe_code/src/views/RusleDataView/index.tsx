@@ -9,7 +9,6 @@ const RusleViewBox = styled.div`
   flex-direction: column;
 `;
 function RusledataView() {
-  
   return (
     <RusleViewBox>
       <Title title="C因子" />
@@ -20,6 +19,12 @@ function RusledataView() {
       <div style={{ height: "2rem" }}></div>
       <Title title="S因子" />
       <FileImporter type="S_factor" svg="" />
+      <div style={{ height: "2rem" }}></div>
+      <Title title="坡度" />
+      <FileImporter type="slope" svg="" />
+      <div style={{ height: "2rem" }}></div>
+      <Title title="D8" />
+      <FileImporter type="D8" svg="" />
       <div style={{ height: "2rem" }}></div>
     </RusleViewBox>
   );

@@ -15,7 +15,7 @@ filePath = sys.argv[2]
 jsonPath = sys.argv[3]
 # projectName = sys.argv[4]
 #
-# type = 'rusleCal'
+# type = 'landuse'
 # filePath = r'E:\webplatform\asd'
 # jsonPath = r'E:\webplatform\fe_code\projectInfo.json'
 projectName = filePath.split('\\')[-1]
@@ -222,6 +222,13 @@ try:
         output2 = pd.DataFrame(data2)
         output2.to_csv(filePath + r'\database\landuse.csv')
         luDF = pd.read_csv(filePath + r'\database\landuse.csv', index_col=0).values
+        with open(jsonPath, "r", encoding="utf-8") as f:
+            infos = json.load(f)
+        targetInfo = {}
+        for info in infos:
+            if info["projectName"] == projectName:
+                targetInfo = info
+        P_factor_DF_10000times = deepcopy(luDF)
         res = 0
         luDict = {}
         for x in range(0, len(luDF)):
@@ -233,7 +240,22 @@ try:
                     luDict[str(code)] += 1
                 else:
                     luDict[str(code)] = 1
+                for c in targetInfo['landUse']['code']:
+                    if code == c['code']:
+                        type == c['type']
+                        if type == 'forest':
+                            P_factor_DF_10000times[x][y] = 0.9 * 10000
+                        elif type == 'paddy':
+                            P_factor_DF_10000times[x][y] = 0.25 * 10000
+                        elif type == 'sloping':
+                            P_factor_DF_10000times[x][y] = 0.35 * 10000
+                        elif type == 'construct':
+                            P_factor_DF_10000times[x][y] = 1 * 10000
+                        elif type == 'water':
+                            P_factor_DF_10000times[x][y] = 0
+
         projInfo = json.load(open(jsonPath))
+        pd.DataFrame(P_factor_DF_10000times).to_csv(filePath + r'\database\P_factor_10000times.csv')
         print(json.dumps(luDict))
     elif type == 'soiltype':
         sourcePath = filePath + r'\database\soiltype.tif'
@@ -304,7 +326,7 @@ try:
             'DEM': demArr,
             'count': countArr
         }))
-    elif type == 'C_factor' or type == 'L_factor' or type == 'S_factor':
+    elif type == 'C_factor' or type == 'L_factor' or type == 'S_factor' or type =='D8' or type == 'slope':
         sourcePath = filePath + r'\database\{}.tif'.format(type)
         print(sourcePath)
         data2 = load_img_to_array(sourcePath)

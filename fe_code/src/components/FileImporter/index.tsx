@@ -16,7 +16,8 @@ interface IProps {
     | "D8"
     | "C_factor"
     | "L_factor"
-    | "S_factor";
+    | "S_factor"
+    | "slope";
   svg: any;
 }
 
@@ -151,6 +152,16 @@ const FileImporter = (props: IProps) => {
 
           {props.type == "S_factor" &&
             (curProjectInfo.rusle.S_factor == true
+              ? "数据已上传，可再次上传数据进行覆盖"
+              : "请上传'tif'或者'csv'格式文件")}
+
+          {props.type == "slope" &&
+            (curProjectInfo.slope.state == true
+              ? "数据已上传，可再次上传数据进行覆盖"
+              : "请上传'tif'或者'csv'格式文件")}
+
+          {props.type == "D8" &&
+            (curProjectInfo.D8.state == true
               ? "数据已上传，可再次上传数据进行覆盖"
               : "请上传'tif'或者'csv'格式文件")}
         </p>

@@ -151,6 +151,10 @@ async function createNewProject() {
           C_factor: false,
           L_factor: false,
         },
+        slope: {
+          state: false,
+          grids: 0,
+        },
         observeData: {
           TP: {
             checked: false,
@@ -384,7 +388,7 @@ function createWindow() {
             msg: curProjectInfo
           })
         })
-      } else if (['C_factor', 'L_factor', 'S_factor'].indexOf(payload.type) !== -1) {
+      } else if (['C_factor', 'L_factor', 'S_factor', 'D8', 'slope'].indexOf(payload.type) !== -1) {
         fs.copyFileSync(filePath, path.join(curProjectPath, 'database', `${payload.type}.tif`))
         const py = spawn('python', [pyPath, payload.type, curProjectPath, path.join(__dirname, './projectInfo.json')])
         py.stdout.on('data', function (dict) {
@@ -394,12 +398,22 @@ function createWindow() {
               msg: 'error'
             })
           }
-          curProjectInfo.rusle[payload.type] = true
-          updataStatusWithEntireInfo(curProjectInfo)
-          resolve({
-            status: 200,
-            msg: curProjectInfo
-          })
+          if (['C_factor', 'L_factor', 'S_factor'].indexOf(payload.type) !== -1) {
+            curProjectInfo.rusle[payload.type] = true
+            updataStatusWithEntireInfo(curProjectInfo)
+            resolve({
+              status: 200,
+              msg: curProjectInfo
+            })
+          } else {
+            curProjectInfo[payload.type].state = true
+            updataStatusWithEntireInfo(curProjectInfo)
+            resolve({
+              status: 200,
+              msg: curProjectInfo
+            })
+          }
+
         })
       } else if (['sed', 'col', 'sedP', 'colP', 'solP', 'TP',].indexOf(payload.type) !== -1) {
         if (!fs.existsSync(path.join(curProjectPath, 'observeData'))) {
