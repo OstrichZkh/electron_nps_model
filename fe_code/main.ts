@@ -401,6 +401,16 @@ function createWindow() {
             msg: curProjectInfo
           })
         })
+      } else if (['sed', 'col', 'sedP', 'colP', 'solP', 'TP',].indexOf(payload.type) !== -1) {
+        if (!fs.existsSync(path.join(curProjectPath, 'observeData'))) {
+          fs.mkdirSync(path.join(curProjectPath, 'observeData'));
+        }
+
+        fs.copyFileSync(filePath, path.join(curProjectPath, 'observeData', `${payload.type}.txt`))
+        resolve({
+          status: 200,
+          msg: curProjectInfo
+        })
       }
       else {
         reject({

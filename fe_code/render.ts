@@ -10,4 +10,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   requireRusle: (payload) => ipcRenderer.invoke('requireRusle', payload),
   requireParas: (payload) => ipcRenderer.invoke('requireParas', payload),
   updateParas: (payload) => ipcRenderer.invoke('updateParas', payload),
+
 })

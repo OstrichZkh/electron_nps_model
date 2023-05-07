@@ -1,3 +1,4 @@
 {
-  "cssrem.rootFontSize": 12
+  "cssrem.rootFontSize": 8,
+  "editor.fontSize": 10
 }
