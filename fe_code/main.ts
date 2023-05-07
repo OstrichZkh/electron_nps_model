@@ -405,7 +405,6 @@ function createWindow() {
         if (!fs.existsSync(path.join(curProjectPath, 'observeData'))) {
           fs.mkdirSync(path.join(curProjectPath, 'observeData'));
         }
-
         fs.copyFileSync(filePath, path.join(curProjectPath, 'observeData', `${payload.type}.txt`))
         resolve({
           status: 200,
@@ -446,12 +445,30 @@ function createWindow() {
       console.log('err');
       return 'err'
     }
-
-
   })
   ipcMain.handle('requireParas', requireParas)
   ipcMain.handle('updateParas', (e, payload) => {
     fs.writeFileSync(path.join(curProjectPath, 'parasInfo.json'), JSON.stringify(payload))
+  })
+  ipcMain.handle('deleteFile', (e, payload) => {
+    return new Promise((resolve, reject) => {
+      const dir = path.join(curProjectPath, 'observeData', `${payload.type}.txt`)
+      fs.unlink(dir, (err) => {
+        if (err) {
+          reject({
+            status: 400,
+            msg: '删除失败'
+          })
+        }
+        resolve(
+          {
+            status: 200,
+            msg: '删除成功'
+          }
+        )
+      })
+    })
+
   })
 
 }

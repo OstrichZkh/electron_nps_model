@@ -1,8 +1,8 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState, Fragment } from "react";
 import styled from "styled-components";
 import Title from "../../components/Title";
 import { useSelector, useDispatch } from "react-redux";
-import { Checkbox, Button, Upload, message } from "antd";
+import { Checkbox, Button, Upload, message, Modal } from "antd";
 import type { CheckboxChangeEvent } from "antd/es/checkbox";
 import { updateStatusAsync } from "../../store/features/dataManagementSlice.ts";
 
@@ -60,6 +60,7 @@ const titleReflect = {
 };
 const CalibrateSelector = (props: KProps) => {
   const [messageApi, contextHolder] = message.useMessage();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const dispatch = useDispatch();
 
@@ -87,9 +88,41 @@ const CalibrateSelector = (props: KProps) => {
     });
     if (respose.status == 200) {
       message.success("上传成功！");
+      dispatch(
+        updateStatusAsync([
+          {
+            target: ["observeData", props.type, "imported"],
+            value: true,
+          },
+        ])
+      );
+      return;
+    } else {
+      message.success("上传失败！");
       return;
     }
   };
+  const showModal = () => {
+    setIsModalOpen(true);
+  };
+  const deleteData = async () => {
+    setIsModalOpen(false);
+    let response = await window.electronAPI.deleteFile({
+      type: props.type,
+    });
+    if (response.status == 200) {
+      message.success("删除成功！");
+      dispatch(
+        updateStatusAsync([
+          {
+            target: ["observeData", props.type, "imported"],
+            value: false,
+          },
+        ])
+      );
+    }
+  };
+
   return (
     <CalibrateSelectorBox>
       <div className="check-box">
@@ -98,23 +131,33 @@ const CalibrateSelector = (props: KProps) => {
         </Checkbox>
       </div>
       <div className="data-importer">
-        <Upload
-          beforeUpload={() => false}
-          fileList={[]}
-          showUploadList={false}
-          onChange={importData}
-        >
-          {props.checked &&
-            (props.imported ? (
-              <Button danger size="middle">
+        {props.checked &&
+          (props.imported ? (
+            <Fragment>
+              <Button onClick={showModal} danger size="middle">
                 删除观测数据
               </Button>
-            ) : (
+              <Modal
+                title="是否确认删除？"
+                open={isModalOpen}
+                onOk={deleteData}
+                onCancel={() => {
+                  setIsModalOpen(false);
+                }}
+              ></Modal>
+            </Fragment>
+          ) : (
+            <Upload
+              beforeUpload={() => false}
+              fileList={[]}
+              showUploadList={false}
+              onChange={importData}
+            >
               <Button type="primary" size="middle">
                 导入观测数据
               </Button>
-            ))}
-        </Upload>
+            </Upload>
+          ))}
       </div>
       {contextHolder}
     </CalibrateSelectorBox>
