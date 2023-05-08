@@ -183,7 +183,7 @@ function ProjectView() {
                 ) !== -1
               ) {
                 let title: string = "";
-                let status: boolean = curProjectInfo[key].status;
+                let status: boolean = curProjectInfo[key].state;
                 switch (key) {
                   case "rainfall":
                     title = "降雨数据";

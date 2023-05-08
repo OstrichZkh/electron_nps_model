@@ -7,9 +7,14 @@ import os
 import copy
 import math
 import time
+import utils
+# 外部传入参数 项目地址、项目json信息
 # projectFile = sys.argv[1]
+
+
 projectFile = r'E:\webplatform\asd'
 fileList = os.listdir(projectFile+r'\observeData')
+# 获取率定目标及观测值
 celibratedTarget = []
 celibratedValue = {}
 for file in fileList:
@@ -21,14 +26,30 @@ for file in fileList:
     for line in open(path):
         arr.append(float(line.replace('\n', '')))
     celibratedValue[key] = arr
-
-
+# mock
 celibratedTarget = ['sedP','solP']
 celibratedValue = {
     'sedP':[0.0275,0.0305,0.047,0.068,0.036,0.045],
     'solP': [0.024, 0.0305, 0.018, 0.033, 0.0305, 0.028],
     # 'col':[0.0105,0.0125,0.225,0.162,0.144]
 }
+# 读取地理数据
+landuseDF = pd.read_csv(projectFile+r'\database\landuse.csv',index_col=0).values
+d8DF = pd.read_csv(projectFile + r'\database\D8.csv',index_col=0).values
+C_factorDF = pd.read_csv(projectFile + r'\database\C_factor.csv',index_col=0).values
+K_factorDF = pd.read_csv(projectFile + r'\database\K_factor_10000times.csv',index_col=0).values
+L_factorDF = pd.read_csv(projectFile + r'\database\L_factor.csv',index_col=0).values
+S_factorDF = pd.read_csv(projectFile + r'\database\S_factor.csv',index_col=0).values
+demDF = pd.read_csv(projectFile+r'\database\DEM.csv',index_col=0).values
+slopeDF = pd.read_csv(projectFile+r'\database\slope.csv',index_col=0).values
+[X,Y] = utils.checkAreaMatch(
+    [landuseDF,d8DF,C_factorDF,K_factorDF,L_factorDF,S_factorDF,demDF,slopeDF],
+    ["土地利用类型","D8","C因子","K因子","L因子","S因子","DEM","坡度"],
+)
+# 获取时间跨度
+dateRange = []
+with open(projectFile+r'\database\R_factor.txt', "r", encoding="utf-8") as f:
+    dateRange = json.load(f)
 phDict = {
     '坡耕地':6,
     '林地':6.5,
@@ -36,93 +57,25 @@ phDict = {
 }
 def fillZero(x,y):
     return 'x' + str(x).zfill(4) + 'y' + str(y).zfill(4)
-d8DF = pd.read_csv(projectFile + r'\database\D8.csv',index_col=0).values
-# 传输路径hashmap
-transDict = {}
-Y = len(d8DF)
-X = len(d8DF[0])
-for y in range(0,Y):
-    for x in range(0,X):
-        d8code = d8DF[y][x]
-        # x0001y0001
-        fromCode = fillZero(x,y)
-        if d8code == 1 and x+1<X:
-            toCode = fillZero(x+1,y)
-            if toCode in transDict:
-                transDict[toCode].append(fromCode)
-            else:
-                transDict[toCode] = [fromCode]
-        elif d8code == 2 and x+1<X and y+1<Y:
-            toCode = fillZero(x+1,y+1)
-            if toCode in transDict:
-                transDict[toCode].append(fromCode)
-            else:
-                transDict[toCode] = [fromCode]
-        elif d8code == 4  and y+1<Y:
-            toCode = fillZero(x,y+1)
-            if toCode in transDict:
-                transDict[toCode].append(fromCode)
-            else:
-                transDict[toCode] = [fromCode]
-        elif d8code == 8  and x-1>=0 and y+1<Y:
-            toCode = fillZero(x-1,y+1)
-            if toCode in transDict:
-                transDict[toCode].append(fromCode)
-            else:
-                transDict[toCode] = [fromCode]
-        elif d8code == 16 and x-1>0:
-            toCode = fillZero(x-1,y)
-            if toCode in transDict:
-                transDict[toCode].append(fromCode)
-            else:
-                transDict[toCode] = [fromCode]
-        elif d8code == 32 and x-1>0 and y-1>0:
-            toCode = fillZero(x-1,y-1)
-            if toCode in transDict:
-                transDict[toCode].append(fromCode)
-            else:
-                transDict[toCode] = [fromCode]
-        elif d8code == 64 and y-1>0:
-            toCode = fillZero(x,y-1)
-            if toCode in transDict:
-                transDict[toCode].append(fromCode)
-            else:
-                transDict[toCode] = [fromCode]
-        elif d8code == 128 and x+1<X and y-1>=0:
-            toCode = fillZero(x+1,y-1)
-            if toCode in transDict:
-                transDict[toCode].append(fromCode)
-            else:
-                transDict[toCode] = [fromCode]
-# python字典保存为json格式
-transDict_json = json.dumps(transDict)
-#将json文件保存为.json格式文件
-with open(projectFile+r'\transDict.json','w+') as file:
-    file.write(transDict_json)
+# 计算上下游关系字典
+transDict = utils.d8toDict(d8DF,projectFile)
 
 
-# C因子
-C = pd.read_csv(projectFile+r'\database\C_factor.csv',index_col=0).values
-# P因子
-P_10000times = pd.read_csv(projectFile+r'\database\P_factor_10000times.csv',index_col=0).values
-# 坡度
-slope = pd.read_csv(projectFile+r'\database\slope.csv',index_col=0).values
-# DEM
-demDF = pd.read_csv(projectFile+r'\database\DEM.csv',index_col=0).values
+# 计算DEM的最大、最小值，地下水模块可能有用
 minDEM = 65535
 maxDEM = 0
 for y in range(0, Y):
     for x in range(0, X):
-        if demDF[y][x] > 0 and demDF[y][x] < 8848:
-            if demDF[y][x]<minDEM:
-                minDEM =demDF[y][x]
-            if demDF[y][x] > maxDEM:
-                maxDEM = demDF[y][x]
-# 土地利用数据
-landuseDF = pd.read_csv(projectFile+r'\database\landUse.csv',index_col=0).values
+        if demDF[x][y] > 0 and demDF[x][y] < 8848:
+            if demDF[x][y]<minDEM:
+                minDEM =demDF[x][y]
+            if demDF[x][y] > maxDEM:
+                maxDEM = demDF[x][y]
+
 # 赋予code值
 with open(projectFile+'\landuseCode.json','r',encoding='utf-8') as fp:
     landuseDict = json.load(fp)
+
 landuseDictDemo = {'1': '林地',
  '2': '坡耕地',
  '3': '河道',

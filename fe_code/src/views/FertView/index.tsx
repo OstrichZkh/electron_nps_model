@@ -213,7 +213,7 @@ const FertView = (props: IProps) => {
         添加措施
       </Button>
       <Modal
-        title="Basic Modal"
+        title="新建措施"
         open={isModalOpen}
         onOk={handleOk}
         onCancel={handleCancel}
