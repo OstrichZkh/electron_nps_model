@@ -1,5 +1,7 @@
 import json
-
+import calendar
+import datetime
+from copy import deepcopy
 def fillZero(x,y):
     return 'x' + str(x).zfill(4) + 'y' + str(y).zfill(4)
 # 将d8文件转化为上下游关系字典
@@ -77,4 +79,170 @@ def checkAreaMatch(dataframes,names):
             raise ValueError('{}的dataframe的X值不匹配！'.format(names[i]))
         elif len(df[0]) != Y:
             raise ValueError('{}的dataframe的Y值不匹配！'.format(names[i]))
-    return [X,Y]
+    #  复制了DEM的DF
+    initDF = dataframes[-2]
+    for x in range(0,X):
+        for y in range(0,Y):
+            dem = initDF[x][y]
+            if dem > 0 and dem < 8848:
+                initDF[x][y] = 0
+            else:
+                initDF[x][y] = -1
+    return [X,Y,initDF]
+
+def getLanduseCode(projectInfo):
+    # [{'type': 'forest', 'code': 1}, {'type': 'paddy', 'code': 2},
+    # {'type': 'water', 'code': 3}, {'type': 'sloping', 'code': 4},
+    # {'type': 'construct', 'code': 5}]
+    code = projectInfo["landUse"]["code"]
+    landuseDict = {}
+    for c in code :
+        landuseDict[c["code"]] = c['type']
+    return landuseDict
+
+def getManagementInfo(projectInfo):
+    return projectInfo["measures"]
+
+def getDataRange(projectInfo):
+    startY = projectInfo["periods"]["startDate"].split('/')[0]
+    startM = projectInfo["periods"]["startDate"].split('/')[1]
+    startD = '1'
+    endY = projectInfo["periods"]["endDate"].split('/')[0]
+    endM = projectInfo["periods"]["endDate"].split('/')[1]
+    if startM[0] == '0':
+        startM = startM[1]
+    if endM[0] == '0':
+        endM = endM[1]
+    endD = str(calendar.monthrange(int(endY), int(endM))[1])
+    startDate = '-'.join([startY, startM, startD]).split('-')
+    endDate = '-'.join([endY, endM, endD]).split('-')
+    gapMonth = (int(endDate[0]) - int(startDate[0])) * 12 + (int(endDate[1]) - int(startDate[1])) + 1
+    startDateTime = datetime.date(int(startDate[0]), int(startDate[1]), int(startDate[2]))
+    endDateTime = datetime.date(int(endDate[0]), int(endDate[1]), int(endDate[2]))
+    return [
+        startDateTime,
+        endDateTime
+    ]
+
+def getMonthlyRainfall(filePath,projInfo):
+
+        rainfallPath = filePath + r'\database\rainfall.txt'
+        # 获取降雨列表
+        rainfallArr = []
+        for line in open(rainfallPath):
+            rainfallArr.append(line.replace('\n', ''))
+        # 此文件用于计算降雨数据
+        rainfallArr.pop(0)
+
+
+        # 2020-1-1
+
+        startDate = projInfo['periods']['startDate'].split('/')
+        endDate = projInfo['periods']['endDate'].split('/')
+        startDate.append('01')
+        endDate.append(calendar.monthrange(int(endDate[0]), int(endDate[1]))[1])
+
+        startDateTime = datetime.date(int(startDate[0]), int(startDate[1]), int(startDate[2]))
+        endDateTime = datetime.date(int(endDate[0]), int(endDate[1]), int(endDate[2]))
+        gapDays = (endDateTime - startDateTime).days + 1
+        gapYears = float((endDateTime - startDateTime).days / 365)
+
+        monthSum = 0
+        monthArr = []
+        count = 0
+        dateArr = []
+
+        while True:
+            # 最后一天了
+            monthSum += float(rainfallArr[count])
+            count = count + 1
+            monBefore = startDateTime.month
+            startDateTime = startDateTime + datetime.timedelta(days=1)
+            monAfter = startDateTime.month
+            # 到了下一个月了
+            if (monBefore != monAfter or count == len(rainfallArr)):
+                if (monthSum >= 0):
+                    monthArr.append(monthSum)
+                else:
+                    monthArr.append(0)
+                monthSum = 0
+            if (startDateTime == endDateTime):
+                if (monthSum >= 0):
+                    monthArr.append(monthSum)
+                else:
+                    monthArr.append(0)
+                monthSum = 0
+                break
+
+        rainfallArr_R = []
+        for rainfall in rainfallArr:
+            if float(rainfall) >= 12:
+                rainfallArr_R.append(float(rainfall))
+            else:
+                rainfallArr_R.append(0)
+        temp = 0  # 计算a、b因子的临时list
+        count = 0
+
+        for rainfall in rainfallArr:
+            if float(rainfall) > 12:
+                temp += float(rainfall)
+                count += 1
+        Pd12 = temp / count
+        Py12 = temp / gapYears
+        b = 0.8363 + 18.177 / Pd12 + 24.455 / Py12
+        a = 21.589 * b ** (-7.1891)
+
+        monthSum1 = 0
+        monthArr1 = []
+        count1 = 0
+        dateArr = []
+        startDateTime = datetime.date(int(startDate[0]), int(startDate[1]), int(startDate[2]))
+        endDateTime = datetime.date(int(endDate[0]), int(endDate[1]), int(endDate[2]))
+        gapDays = (endDateTime - startDateTime).days + 1
+        gapYears = float((endDateTime - startDateTime).days / 365)
+        while True:
+            # 最后一天了
+            monthSum1 += float(rainfallArr_R[count1])
+            count1 = count1 + 1
+            monBefore = startDateTime.month
+            startDateTime = startDateTime + datetime.timedelta(days=1)
+            monAfter = startDateTime.month
+            # 到了下一个月了
+            if (monBefore != monAfter or count1 == len(rainfallArr_R)):
+                if (monthSum1 >= 0):
+                    monthArr1.append(monthSum1)
+                else:
+                    monthArr1.append(0)
+                monthSum1 = 0
+            if (startDateTime == endDateTime):
+                if (monthSum1 >= 0):
+                    monthArr1.append(monthSum1)
+                else:
+                    monthArr1.append(0)
+                monthSum1 = 0
+                break
+
+        # 发送给主进程降雨数据
+        monthList = []
+        curY = int(startDate[0])
+        curM = int(startDate[1])
+        endY = int(endDate[0])
+        endM = int(endDate[1])
+        while curY < endY or (curY == endY and curM <= endM):
+            monthList.append(str(curY) + '/' + str(curM))
+            if curM == 12:
+                curM = 1
+                curY += 1
+            else:
+                curM += 1
+        rainfallList = []
+        for i in range(0, len(monthList)):
+            rainfallList.append({
+                'date': monthList[i],
+                'rainfall': monthArr[i],
+                "R_factor": monthArr1[i]
+            })
+        json_str = json.dumps(rainfallList)
+        # with open(filePath + r'\database\R_factor.txt', 'w') as json_file:
+        #     json_file.write(json_str)
+        return rainfallList

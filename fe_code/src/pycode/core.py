@@ -12,8 +12,16 @@ import utils
 # projectFile = sys.argv[1]
 
 
+
 projectFile = r'E:\webplatform\asd'
+projectName = projectFile.split('\\')[-1]
 fileList = os.listdir(projectFile+r'\observeData')
+# 施肥措施数据
+allProjectInfo = []
+with open(r'E:\webplatform\fe_code\projectInfo.json','r',encoding='utf-8') as fp:
+    allProjectInfo = json.load(fp)
+curProjectInfo = list(filter(lambda info: info["projectName"] == projectName,allProjectInfo))[0]
+
 # 获取率定目标及观测值
 celibratedTarget = []
 celibratedValue = {}
@@ -42,7 +50,8 @@ L_factorDF = pd.read_csv(projectFile + r'\database\L_factor.csv',index_col=0).va
 S_factorDF = pd.read_csv(projectFile + r'\database\S_factor.csv',index_col=0).values
 demDF = pd.read_csv(projectFile+r'\database\DEM.csv',index_col=0).values
 slopeDF = pd.read_csv(projectFile+r'\database\slope.csv',index_col=0).values
-[X,Y] = utils.checkAreaMatch(
+
+[X,Y,initDF] = utils.checkAreaMatch(
     [landuseDF,d8DF,C_factorDF,K_factorDF,L_factorDF,S_factorDF,demDF,slopeDF],
     ["土地利用类型","D8","C因子","K因子","L因子","S因子","DEM","坡度"],
 )
@@ -72,29 +81,26 @@ for y in range(0, Y):
             if demDF[x][y] > maxDEM:
                 maxDEM = demDF[x][y]
 
-# 赋予code值
-with open(projectFile+'\landuseCode.json','r',encoding='utf-8') as fp:
-    landuseDict = json.load(fp)
-
-landuseDictDemo = {'1': '林地',
- '2': '坡耕地',
- '3': '河道',
- '4': '水田',
- '5': '建设用地'}
+# 获得土地利用类型 code - landuse 对应字典
+landuseDict = utils.getLanduseCode(curProjectInfo)
+landuseDictDemo = {'1': 'forest',
+ '2': 'sloping',
+ '3': 'water',
+ '4': 'paddy',
+ '5': 'construct'}
 for item in landuseDict.items():
-    if item[1]=='林地':
+    if item[1]=='forest':
         forestCode = item[0]
-    elif item[1]=='坡耕地':
+    elif item[1]=='sloping':
         slopelandCode = item[0]
-    elif item[1]=='水田':
+    elif item[1]=='paddy':
         paddylandCode = item[0]
-    elif item[1] == '河道' or item[1] == '池塘':
+    elif item[1] == 'water':
         waterCode = item[0]
-    elif item[1] == '建设用地':
+    elif item[1] == 'construct':
         buildingCode = item[0]
 # 施肥措施数据
-with open(projectFile+'\management.json','r',encoding='utf-8') as fp:
-    managementList = json.load(fp)
+managementList = utils.getManagementInfo(curProjectInfo)
 # 管理措施字典
 managementDict = {
     1:[],
@@ -120,50 +126,17 @@ managementDict = {
 #     'fertPhoPer': '0.6',
 #     'index': 1663500575621
 # }
-for management in managementList:
-    managementDict[management['fertMonth']].append(management)
+# for management in managementList:
+#     managementDict[management['fertMonth']].append(management)
 # 日期数据
-with open(projectFile+'\dataInfo.json','r',encoding='utf8') as fp:
-    dataInfo = json.load(fp)
-startDate = dataInfo['periods']['startDate'].split('-')
-endDate = dataInfo['periods']['endDate'].split('-')
-gapMonth = (int(endDate[0])-int(startDate[0]))*12 +(int(endDate[1])-int(startDate[1]))+ 1
-startDateTime = datetime.date(int(startDate[0]),int(startDate[1]),int(startDate[2]))
-endDateTime = datetime.date(int(endDate[0]),int(endDate[1]),int(endDate[2]))
-# 初始csv，0 and 65535
-initDF = pd.read_csv(projectFile+r'\init0.csv',index_col=0).values.tolist()
-X = len(initDF[0]) # 92
-Y = len(initDF) # 211
-# 获得每月的降雨总量
-monthArr = []
-R_factor = []
-for line in open(projectFile +r'\rain.txt'):
-    R_factor.append(line.replace('\n',''))
-R_factor.pop(0)
-monthSum = 0
-count = 0
-while True:
-    # 最后一天了
-    if(startDateTime>endDateTime):
-        break
-    monthSum += float(R_factor[count])
-    count = count + 1
-    monBefore = startDateTime.month
-    startDateTime = startDateTime+datetime.timedelta(days=1)
-    monAfter = startDateTime.month
-    # 到了下一个月了
-    if(monBefore!=monAfter or count==len(R_factor)):
-        if(monthSum>=0):
-            monthArr.append(monthSum)
-        else:
-            monthArr.append(0)
-        monthSum = 0
-# 每月的降雨总量
-monthRainfall = monthArr
+
+[startDateTime,endDateTime] = utils.getDataRange(curProjectInfo)
+monthRainfall = utils.getMonthlyRainfall(projectFile,curProjectInfo)
+print(monthRainfall)
 # 创建空文件夹
 if not os.path.exists(projectFile+r'\modelResult'):
     os.makedirs(projectFile+r'\modelResult')
-for i in range(1,8):
+for i in range(1,len(monthRainfall)+1):
     if not os.path.exists(projectFile+r'\modelResult\month'+str(i)):
         os.makedirs(projectFile+r'\modelResult\month'+str(i))
 

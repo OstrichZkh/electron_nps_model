@@ -326,9 +326,19 @@ try:
             'DEM': demArr,
             'count': countArr
         }))
-    elif type == 'C_factor' or type == 'L_factor' or type == 'S_factor' or type =='D8' or type == 'slope':
+    elif type == 'C_factor' or type == 'L_factor' or type == 'S_factor':
         sourcePath = filePath + r'\database\{}.tif'.format(type)
-        print(sourcePath)
+        data2 = load_img_to_array(sourcePath)
+        for x in range(0,len(data2)):
+            for y in range(0,len(data2[0])):
+                val = data2[x][y]
+                if val >=0 or val <= 10000000:
+                    data2[x][y] = val * 10000
+        output2 = pd.DataFrame(data2)
+        output2.to_csv(filePath + r'\database\{}_10000times.csv'.format(type))
+        print('ok')
+    elif type =='D8' or type == 'slope':
+        sourcePath = filePath + r'\database\{}.tif'.format(type)
         data2 = load_img_to_array(sourcePath)
         output2 = pd.DataFrame(data2)
         output2.to_csv(filePath + r'\database\{}.csv'.format(type))
@@ -338,9 +348,12 @@ try:
             rusleDict = json.load(f)
 
         K_factor = pd.read_csv(filePath + r'\database\K_factor_10000times.csv',index_col=0).values
-        C_factor = pd.read_csv(filePath + r'\database\C_factor.csv',index_col=0).values
-        L_factor = pd.read_csv(filePath + r'\database\L_factor.csv',index_col=0).values
-        S_factor = pd.read_csv(filePath + r'\database\S_factor.csv',index_col=0).values
+        C_factor = pd.read_csv(filePath + r'\database\C_factor_10000times.csv',index_col=0).values
+        L_factor = pd.read_csv(filePath + r'\database\L_factor_10000times.csv',index_col=0).values
+        S_factor = pd.read_csv(filePath + r'\database\S_factor_10000times.csv',index_col=0).values
+        P_factor = pd.read_csv(filePath + r'\database\P_factor_10000times.csv',index_col=0).values
+
+
         X1 = len(K_factor)
         X2 = len(C_factor)
         X3 = len(L_factor)
@@ -352,6 +365,7 @@ try:
         Y4 = len(S_factor[0])
 
         if X1 == X2 and X2 == X3 and X3 == X4 and Y1 == Y2 and Y2 == Y3 and Y3==Y4:
+            cnt = 0
             for i in range(0,len(rusleDict)):
                 # 一个月的运算过程
                 oneMonthRusleDf = deepcopy(K_factor)
@@ -362,9 +376,10 @@ try:
                 for x in range(0,X1):
                     for y in range(0,Y1):
                         k = K_factor[x][y] / 10000
-                        c = C_factor[x][y]
-                        l = L_factor[x][y]
-                        s = S_factor[x][y]
+                        c = C_factor[x][y] / 10000
+                        l = L_factor[x][y] / 10000
+                        s = S_factor[x][y] / 10000
+                        p = P_factor[x][y] / 10000
                         if k > 0 and k < 10000:
                             oneMonthRusleSum += r*k*c*l*s
                             oneMonthRusleDf[x][y] = r*k*c*l*s
@@ -372,7 +387,8 @@ try:
                             oneMonthRusleDf[x][y] = -1
                 if not os.path.exists(r"{}\rusle".format(filePath)):
                     os.mkdir(r"{}\rusle".format(filePath))
-                path = r"{}\rusle\{}_{}.csv".format(filePath,year,month)
+                cnt += 1
+                path = r"{}\rusle\{}_{}_{}.csv".format(filePath,year,month,cnt)
                 pd.DataFrame(oneMonthRusleDf).to_csv(path)
                 rusleDict[i]['rusle'] = oneMonthRusleSum
             with open(filePath + r'\database\R_factor.txt', 'w',encoding="utf-8") as fp:
