@@ -147,12 +147,9 @@ def oneMonthProcess(paraDict,month,preMonthResult):
     # 读取rusle数据
     rusle = pd.read_csv(projectFile+r'\rusle\rusle'+str(i)+'.csv',index_col=0).values
     # 基于D8计算每个月的降雨产流，生成runoff.csv文件
+    # 地表径流、壤中流产流
     runoff_generate = copy.deepcopy(initDF)
-    # 壤中流产流
     runoff_soil_generate = copy.deepcopy(initDF)
-    # 浅层地下水产流
-    runoff_groundwater_generate = copy.deepcopy(initDF)
-
     for y in range(0,Y):
         for x in range(0,X):
             if runoff_generate[y][x] == 0:
@@ -165,75 +162,49 @@ def oneMonthProcess(paraDict,month,preMonthResult):
                 elif landuseDF[y][x] == float(paddylandCode):
                     CN = paraDict['CN_paddy']
                 S = 25.4*(1000/CN-10)
-                Q_surf = (monthRainfall[month - 1]['rainfall'] - 0.2 * S) ** 2 / (monthRainfall[month - 1]['rainfall'] + 0.8 * S)  # 2-3
-
-                if False and Q_surf <= paraDict['rzl_threshold']:
-                    # 产生径流小于一定的阈值时，全部为壤中流
+                rainfall = monthRainfall[month - 1]['rainfall']
+                Q_surf = (rainfall- 0.2 * S) ** 2 / (rainfall + 0.8 * S)  # 2-3
+                if rainfall < paraDict['R0']:
+                #  小于R0，全为壤中流
                     runoff_generate[y][x] = 0
                     runoff_soil_generate[y][x] = Q_surf
-                    runoff_groundwater_generate[y][x] = 0
+                elif rainfall < paraDict['R1']:
+                    surface = paraDict['Q_SURF_K1']*(rainfall-paraDict['R0'])
+                    soil = paraDict['Q_SOIL_K1']*rainfall
+                    runoff_generate[y][x] = Q_surf * surface / (surface + soil)
+                    runoff_soil_generate[y][x] = Q_surf * soil / (surface + soil)
+
                 else:
-                    # 否则，按照比例进行下渗
-                    # surfaceToSoil = 1-math.exp(paraDict['rzlRation']*(1-runoff_generate[y][x]))
-                    surfaceToSoil = (slopeDF[y][x]/100+P_factorDF[y][x])/2
-                    soilToUnderground = (demDF[y][x] - minDEM) * (paraDict['underground_upper']-paraDict['underground_lower']) / (maxDEM-minDEM) + paraDict['underground_lower']
-                    # 地下水
-                    runoff_groundwater_generate[y][x] =  Q_surf * surfaceToSoil * soilToUnderground
-                    # 壤中流
-                    runoff_soil_generate[y][x] = Q_surf * surfaceToSoil * (1 - soilToUnderground)
-                    # 地表径流
-                    # runoff_generate[y][x] = Q_surf - runoff_soil_generate[y][x] - runoff_groundwater_generate[y][x]
-                    runoff_generate[y][x] = Q_surf
-
-    pd.DataFrame(runoff_generate).to_csv(projectFile+r'\modelResult\month'+str(month)+r'\runoff_generate.csv')
-
-    # 径流汇流初始化
+                    surface = paraDict['Q_SURF_K1'] * (paraDict['R1'] - paraDict['R0']) + paraDict['Q_SURF_K2'] * (rainfall - paraDict['R1'])
+                    soil = paraDict['Q_SOIL_K1'] * paraDict['R1']
+                    runoff_generate[y][x] = Q_surf * surface / (surface + soil)
+                    runoff_soil_generate[y][x] = Q_surf * soil / (surface + soil)
+    pd.DataFrame(runoff_generate).to_csv(projectFile+r'\modelResult\month'+str(month)+r'\地表径流_产生量.csv')
+    pd.DataFrame(runoff_soil_generate).to_csv(projectFile+r'\modelResult\month'+str(month)+r'\壤中流_产生量.csv')
+    # 地表径流、壤中流汇流
     runoff_flow = copy.deepcopy(runoff_generate)
     runoff_soil_flow = copy.deepcopy(runoff_soil_generate)
-    runoff_groundwater_flow = copy.deepcopy(runoff_groundwater_generate)
     # 水文汇流过程，无拦截损失
     # 地表径流
-    def fn(x,y):
+    def confluence(x,y):
         xyCode = fillZero(x,y)
         if xyCode in transDict:
             fromCode = transDict[xyCode]
             for code in fromCode:
                 preX = int(code[1:5])
                 preY = int(code[6:])
-                runoff_flow[y][x] += fn(preX,preY)
-            return runoff_flow[y][x]
+                [preRunoff,preSoil] = confluence(preX,preY)
+                runoff_flow[y][x] += preRunoff
+                runoff_soil_flow[y][x] += preSoil
+            return [runoff_flow[y][x],runoff_soil_flow[y][x]]
         else:
-            return runoff_flow[y][x]
-    # 壤中流
-    def fn2(x,y):
-        xyCode = fillZero(x,y)
-        if xyCode in transDict:
-            fromCode = transDict[xyCode]
-            for code in fromCode:
-                preX = int(code[1:5])
-                preY = int(code[6:])
-                runoff_soil_flow[y][x] += fn2(preX,preY)
-            return runoff_soil_flow[y][x]
-        else:
-            return runoff_soil_flow[y][x]
-    # 地下水
-    def fn3(x, y):
-        xyCode = fillZero(x, y)
-        if xyCode in transDict:
-            fromCode = transDict[xyCode]
-            for code in fromCode:
-                preX = int(code[1:5])
-                preY = int(code[6:])
-                runoff_groundwater_flow[y][x] += fn3(preX, preY)
-            return runoff_groundwater_flow[y][x]
-        else:
-            return runoff_groundwater_flow[y][x]
-    fn(44,209)
-    fn2(44,209)
-    fn3(44,209)
+            return [runoff_flow[y][x],runoff_soil_flow[y][x]]
+    # 汇流过程
+    confluence(44,209)
+    pd.DataFrame(runoff_flow).to_csv(projectFile+r'\modelResult\month'+str(month)+r'\地表径流_汇流量.csv')
+    pd.DataFrame(runoff_soil_flow).to_csv(projectFile+r'\modelResult\month'+str(month)+r'\壤中流_汇流量.csv')
 
-    pd.DataFrame(runoff_flow).to_csv(projectFile+r'\modelResult\month'+str(month)+r'\runoff_flow.csv')
-    print(projectFile+r'\modelResult\month'+str(month)+r'\runoff_flow.csv')
+
     # 本月的土壤磷循环、施肥措施，生成六个不同的soilP.csv文件
     # 初始化参数
     # 土壤温度
@@ -725,40 +696,6 @@ def oneMonthProcess(paraDict,month,preMonthResult):
     # 本月的土壤磷、泥沙产生量，生成sedP、solP、sediment csv文件
 
     # 进行反向递归+拦截模块，生成sedP、solP、sediment的汇流量
-# paraList = {
-#             'PSP': PSP,  # 0.01-0.7
-#             'SOL_SOLP': SOL_SOLP,  # 0-100
-#             'SOL_ORGP': SOL_ORGP,  # 0-100
-#             'RSDIN': RSDIN,  # 0-10000
-#             'SOL_BD': SOL_BD,  # 0.9-2.5
-#             'SOL_CBN': SOL_CBN,  # 0.05-10
-#             'CMN': CMN,  # 0.001-0.003
-#             'CLAY': CLAY,  # 0-100
-#             'SOL_AWC': SOL_AWC,  # 0-1
-#             'RSDCO': RSDCO,  # 0.02-0.1
-#             'RSDCO_PL': RSDCO_PL,  # 0.01-0.099
-#             'PPERCO': PPERCO,  # 10-17.5
-#             'FMINN': FMINN,  # 0-1
-#             'FMINP': FMINP,  # 0-1
-#             'FORGN': FORGN,  # 0-1
-#             'FORGP': FORGP,  # 0-1
-#             'FNH3N': FNH3N,  # 0-1
-#             'para_C_sed': para_C_sed,
-#             'para_Q1_sed': para_Q1_sed,
-#             'para_Q2_sed': para_Q2_sed,
-#             'para_lnconc_sed': para_lnconc_sed,
-#             'para_S_sed': para_S_sed,
-#             'para_C_sedP': para_C_sedP,
-#             'para_Q1_sedP': para_Q1_sedP,
-#             'para_Q2_sedP': para_Q2_sedP,
-#             'para_lnconc_sedP': para_lnconc_sedP,
-#             'para_S_sedP': para_S_sedP,
-#             'para_C_solP': para_C_solP,
-#             'para_Q1_solP': para_Q1_solP,
-#             'para_Q2_solP': para_Q2_solP,
-#             'para_lnconc_solP': para_lnconc_solP,
-#             'para_S_solP': para_S_solP,
-# }
 
 def trans(paraDict,x,y):
     resArr = {
