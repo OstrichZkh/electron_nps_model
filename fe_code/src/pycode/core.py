@@ -44,10 +44,12 @@ celibratedValue = {
 # 读取地理数据
 landuseDF = pd.read_csv(projectFile+r'\database\landuse.csv',index_col=0).values
 d8DF = pd.read_csv(projectFile + r'\database\D8.csv',index_col=0).values
-C_factorDF = pd.read_csv(projectFile + r'\database\C_factor.csv',index_col=0).values
+C_factorDF = pd.read_csv(projectFile + r'\database\C_factor_10000times.csv',index_col=0).values
 K_factorDF = pd.read_csv(projectFile + r'\database\K_factor_10000times.csv',index_col=0).values
-L_factorDF = pd.read_csv(projectFile + r'\database\L_factor.csv',index_col=0).values
-S_factorDF = pd.read_csv(projectFile + r'\database\S_factor.csv',index_col=0).values
+L_factorDF = pd.read_csv(projectFile + r'\database\L_factor_10000times.csv',index_col=0).values
+S_factorDF = pd.read_csv(projectFile + r'\database\S_factor_10000times.csv',index_col=0).values
+P_factorDF = pd.read_csv(projectFile + r'\database\P_factor_10000times.csv',index_col=0).values
+
 demDF = pd.read_csv(projectFile+r'\database\DEM.csv',index_col=0).values
 slopeDF = pd.read_csv(projectFile+r'\database\slope.csv',index_col=0).values
 
@@ -143,35 +145,27 @@ for i in range(1,len(monthRainfall)+1):
 # 开始汇流计算
 def oneMonthProcess(paraDict,month,preMonthResult):
     # 读取rusle数据
-    rusle = pd.read_csv(r'C:\Users\yezouhua\Desktop\master\webPlatform\数据\RUSLE数据\RUSLE'+str(i)+'.csv',index_col=0).values
+    rusle = pd.read_csv(projectFile+r'\rusle\rusle'+str(i)+'.csv',index_col=0).values
     # 基于D8计算每个月的降雨产流，生成runoff.csv文件
     runoff_generate = copy.deepcopy(initDF)
     # 壤中流产流
     runoff_soil_generate = copy.deepcopy(initDF)
     # 浅层地下水产流
     runoff_groundwater_generate = copy.deepcopy(initDF)
-    # min = 9999
-    # max = 0
-    # for y in range(0, Y):
-    #     for x in range(0, X):
-    #         if slope[y][x]/100+P[y][x] > max:
-    #             max = slope[y][x]/100+P[y][x]
-    #         if slope[y][x]/100+P[y][x] < min:
-    #             min = slope[y][x]/100+P[y][x]
-    # print(min,max)
+
     for y in range(0,Y):
         for x in range(0,X):
             if runoff_generate[y][x] == 0:
                 # 计算地表产流
-                CN = paraDict['CN1']
+                CN = 70
                 if landuseDF[y][x] == float(forestCode):
-                    CN = paraDict['CN1']
+                    CN = paraDict['CN_forest']
                 elif landuseDF[y][x] == float(slopelandCode):
-                    CN = paraDict['CN2']
+                    CN = paraDict['CN_sloping']
                 elif landuseDF[y][x] == float(paddylandCode):
-                    CN = paraDict['CN2']
+                    CN = paraDict['CN_paddy']
                 S = 25.4*(1000/CN-10)
-                Q_surf = (monthRainfall[month - 1] - 0.2 * S) ** 2 / (monthRainfall[month - 1] + 0.8 * S)  # 2-3
+                Q_surf = (monthRainfall[month - 1]['rainfall'] - 0.2 * S) ** 2 / (monthRainfall[month - 1]['rainfall'] + 0.8 * S)  # 2-3
 
                 if False and Q_surf <= paraDict['rzl_threshold']:
                     # 产生径流小于一定的阈值时，全部为壤中流
@@ -181,7 +175,7 @@ def oneMonthProcess(paraDict,month,preMonthResult):
                 else:
                     # 否则，按照比例进行下渗
                     # surfaceToSoil = 1-math.exp(paraDict['rzlRation']*(1-runoff_generate[y][x]))
-                    surfaceToSoil = (slope[y][x]/100+P[y][x])/2
+                    surfaceToSoil = (slopeDF[y][x]/100+P_factorDF[y][x])/2
                     soilToUnderground = (demDF[y][x] - minDEM) * (paraDict['underground_upper']-paraDict['underground_lower']) / (maxDEM-minDEM) + paraDict['underground_lower']
                     # 地下水
                     runoff_groundwater_generate[y][x] =  Q_surf * surfaceToSoil * soilToUnderground
@@ -771,47 +765,36 @@ def trans(paraDict,x,y):
         'runoff': {
             'surface': [],
             'soil': [],
-            'underground': [],
             'total': []
         },
         'sedP': {
             'surface': [],
             'soil': [],
-            'underground': [],
             'total': []
             },
         'solP':{
             'surface': [],
             'soil': [],
-            'underground': [],
             'total': []
         },
         'colP':{
             'surface': [],
             'soil': [],
-            'underground': [],
-            'total': []
-        },
-        'colP_amount':{
-            'surface': [],
-            'soil': [],
-            'underground': [],
             'total': []
         },
         'TP':{
             'surface': [],
             'soil': [],
-            'underground': [],
             'total': []
         },
         'sed':{
             'surface':[],
+            'soil': [],
             'total':[]
         },
         'col':{
             'surface': [],
             'soil': [],
-            'underground': [],
             'total': []
         }
     }
@@ -978,20 +961,20 @@ def RE(obs, pre,key):
     print(key,'RE',re / len(obs),obs,pre )
     return -re / len(obs)
 
-def process(PSP, SOL_SOLP, SOL_ORGP, RSDIN, SOL_BD, SOL_CBN, CMN, CLAY, SOL_AWC, RSDCO, RSDCO_PL, PPERCO, # 0 - 12
-            FMINN, FMINP, FORGN, FORGP, FNH3N, # 13 - 17
-            para_C_sed, para_Q1_sed, para_Q2_sed, para_lnconc_sed, para_S_sed, # 18 - 22
-            para_C_sedP,para_Q1_sedP, para_Q2_sedP, para_lnconc_sedP, para_S_sedP, # 23 - 27
-            para_C_solP, para_Q1_solP, para_Q2_solP,para_lnconc_solP, para_S_solP, # 28 - 32
-            rationSed,rationSedP,rationSolP, # 33 - 35
-            rationSurfaceToSoil,rationSoilToUndergroud,  # 36 - 37
-            CN1,CN2,CN3,  # 38 - 40
-            para_ph1_col,para_ph2_col,para_ph3_col,para_ph4_col,   # 41 - 44
-            para_C_col, para_Q1_col, para_Q2_col, para_lnconc_col, para_S_col, # 45 - 49
-            para_C_colP,para_Q1_colP, para_Q2_colP, para_lnconc_colP, para_S_colP, # 50 - 54
-            rzlRation,rzl_col_ration,rzl_sed_ration,rzl_threshold, # 55 - 58
-            underground_lower,underground_upper,underground_sed_ration,underground_col_ration, # 59-62
-            final_ration1,final_ration2
+def process(
+
+        PSP,RSDIN,SOL_BD,SOL_CBN,CMN,CLAY,SOL_AWC,RSDCO,
+        PHOSKD,V_SET,D50,AI2,RHOQ,BC4,RS5,RS2,INTER_SED_PARA_1,
+        INTER_SED_PARA_2,INTER_SED_PARA_3,INTER_SED_PARA_4,
+        INTER_SED_PARA_5,INTER_COL_PARA_1,INTER_COL_PARA_2,
+        INTER_COL_PARA_3,INTER_COL_PARA_4,INTER_COL_PARA_5,
+        INTER_SEDP_PARA_1,INTER_SEDP_PARA_2,INTER_SEDP_PARA_3,
+        INTER_SEDP_PARA_4,INTER_SEDP_PARA_5,INTER_COLP_PARA_1,
+        INTER_COLP_PARA_2,INTER_COLP_PARA_3,INTER_COLP_PARA_4,
+        INTER_COLP_PARA_5,INTER_RESP_PARA_1,INTER_RESP_PARA_2,
+        INTER_RESP_PARA_3,INTER_RESP_PARA_4,INTER_RESP_PARA_5,
+        R0,R1,Q_SURF_K1,Q_SURF_K2,Q_SOIL_K1,PARA_PH0,PARA_PH1,
+        PARA_PH2,PARA_PH3,PARA_PH4,CN_sloping,CN_forest,CN_paddy
             ):
     global objective_r2_sedP,objective_nse_sedP,\
     objective_r2_solP,objective_nse_solP,objective_r2_sed,\
@@ -1007,102 +990,93 @@ def process(PSP, SOL_SOLP, SOL_ORGP, RSDIN, SOL_BD, SOL_CBN, CMN, CLAY, SOL_AWC,
         }
     allRes = []
     paraRes = []
-    for PSP, SOL_SOLP, SOL_ORGP, RSDIN, SOL_BD, SOL_CBN, CMN, CLAY, SOL_AWC, RSDCO, RSDCO_PL, PPERCO, \
-        FMINN, FMINP, FORGN, FORGP, FNH3N, \
-        para_C_sed, para_Q1_sed, para_Q2_sed, para_lnconc_sed, para_S_sed, \
-        para_C_sedP, para_Q1_sedP, para_Q2_sedP, para_lnconc_sedP, para_S_sedP, \
-        para_C_solP, para_Q1_solP, para_Q2_solP, para_lnconc_solP, para_S_solP, \
-        rationSed, rationSedP, rationSolP, rationSurfaceToSoil, rationSoilToUndergroud, CN1, CN2, CN3, \
-        para_ph1_col, para_ph2_col, para_ph3_col, para_ph4_col, \
-        para_C_col, para_Q1_col, para_Q2_col, para_lnconc_col, para_S_col, \
-        para_C_colP, para_Q1_colP, para_Q2_colP, para_lnconc_colP, para_S_colP, \
-        rzlRation, rzl_col_ration, rzl_sed_ration, rzl_threshold, \
-        underground_lower, underground_upper, underground_sed_ration, underground_col_ration,final_ration1,final_ration2 in zip(
-        PSP, SOL_SOLP, SOL_ORGP, RSDIN, SOL_BD, SOL_CBN, CMN, CLAY, SOL_AWC, RSDCO, RSDCO_PL, PPERCO,
-        FMINN, FMINP, FORGN, FORGP, FNH3N,
-        para_C_sed, para_Q1_sed, para_Q2_sed, para_lnconc_sed, para_S_sed,
-        para_C_sedP, para_Q1_sedP, para_Q2_sedP, para_lnconc_sedP, para_S_sedP,
-        para_C_solP, para_Q1_solP, para_Q2_solP, para_lnconc_solP, para_S_solP,
-        rationSed, rationSedP, rationSolP, rationSurfaceToSoil, rationSoilToUndergroud, CN1, CN2, CN3,
-        para_ph1_col, para_ph2_col, para_ph3_col, para_ph4_col,
-        para_C_col, para_Q1_col, para_Q2_col, para_lnconc_col, para_S_col,  # 45 - 49
-        para_C_colP, para_Q1_colP, para_Q2_colP, para_lnconc_colP, para_S_colP,  # 50 - 54
-        rzlRation, rzl_col_ration, rzl_sed_ration, rzl_threshold,
-        underground_lower, underground_upper, underground_sed_ration, underground_col_ration,
-        final_ration1, final_ration2
+    for PSP,RSDIN,SOL_BD,SOL_CBN,CMN,CLAY,SOL_AWC,RSDCO, \
+        PHOSKD,V_SET,D50,AI2,RHOQ,BC4,RS5,RS2,INTER_SED_PARA_1, \
+        INTER_SED_PARA_2,INTER_SED_PARA_3,INTER_SED_PARA_4, \
+        INTER_SED_PARA_5,INTER_COL_PARA_1,INTER_COL_PARA_2, \
+        INTER_COL_PARA_3,INTER_COL_PARA_4,INTER_COL_PARA_5, \
+        INTER_SEDP_PARA_1,INTER_SEDP_PARA_2,INTER_SEDP_PARA_3, \
+        INTER_SEDP_PARA_4,INTER_SEDP_PARA_5,INTER_COLP_PARA_1, \
+        INTER_COLP_PARA_2,INTER_COLP_PARA_3,INTER_COLP_PARA_4, \
+        INTER_COLP_PARA_5,INTER_RESP_PARA_1,INTER_RESP_PARA_2, \
+        INTER_RESP_PARA_3,INTER_RESP_PARA_4,INTER_RESP_PARA_5, \
+        R0,R1,Q_SURF_K1,Q_SURF_K2,Q_SOIL_K1,PARA_PH0,PARA_PH1, \
+        PARA_PH2,PARA_PH3,PARA_PH4,CN_sloping,CN_forest,CN_paddy in zip(
+        PSP, RSDIN, SOL_BD, SOL_CBN, CMN, CLAY, SOL_AWC, RSDCO,
+        PHOSKD, V_SET, D50, AI2, RHOQ, BC4, RS5, RS2, INTER_SED_PARA_1,
+        INTER_SED_PARA_2, INTER_SED_PARA_3, INTER_SED_PARA_4,
+        INTER_SED_PARA_5, INTER_COL_PARA_1, INTER_COL_PARA_2,
+        INTER_COL_PARA_3, INTER_COL_PARA_4, INTER_COL_PARA_5,
+        INTER_SEDP_PARA_1, INTER_SEDP_PARA_2, INTER_SEDP_PARA_3,
+        INTER_SEDP_PARA_4, INTER_SEDP_PARA_5, INTER_COLP_PARA_1,
+        INTER_COLP_PARA_2, INTER_COLP_PARA_3, INTER_COLP_PARA_4,
+        INTER_COLP_PARA_5, INTER_RESP_PARA_1, INTER_RESP_PARA_2,
+        INTER_RESP_PARA_3, INTER_RESP_PARA_4, INTER_RESP_PARA_5,
+        R0, R1, Q_SURF_K1, Q_SURF_K2, Q_SOIL_K1, PARA_PH0, PARA_PH1,
+        PARA_PH2, PARA_PH3, PARA_PH4, CN_sloping,CN_forest,CN_paddy
     ):
         time += 1
         # 一组参数
         paraDict = {
-            'PSP': PSP,  # 0.01-0.7
-            'SOL_SOLP': SOL_SOLP,  # 0-100
-            'SOL_ORGP': SOL_ORGP,  # 0-100
-            'RSDIN': RSDIN,  # 0-10000
-            'SOL_BD': SOL_BD,  # 0.9-2.5
-            'SOL_CBN': SOL_CBN,  # 0.05-10
-            'CMN': CMN,  # 0.001-0.003
-            'CLAY': CLAY,  # 0-100
-            'SOL_AWC': SOL_AWC,  # 0-1
-            'RSDCO': RSDCO,  # 0.02-0.1
-            'RSDCO_PL': RSDCO_PL,  # 0.01-0.099
-            'PPERCO': PPERCO,  # 10-17.5
-            'FMINN': FMINN,  # 0-1
-            'FMINP': FMINP,  # 0-1
-            'FORGN': FORGN,  # 0-1
-            'FORGP': FORGP,  # 0-1
-            'FNH3N': FNH3N,  # 0-1
-            'para_C_sed': para_C_sed,
-            'para_Q1_sed': para_Q1_sed,
-            'para_Q2_sed': para_Q2_sed,
-            'para_lnconc_sed': para_lnconc_sed,
-            'para_S_sed': para_S_sed,
-            'para_C_sedP': para_C_sedP,
-            'para_Q1_sedP': para_Q1_sedP,
-            'para_Q2_sedP': para_Q2_sedP,
-            'para_lnconc_sedP': para_lnconc_sedP,
-            'para_S_sedP': para_S_sedP,
-            'para_C_solP': para_C_solP,
-            'para_Q1_solP': para_Q1_solP,
-            'para_Q2_solP': para_Q2_solP,
-            'para_lnconc_solP': para_lnconc_solP,
-            'para_S_solP': para_S_solP,
-            'rationSed': rationSed,
-            'rationSedP': rationSedP,
-            'rationSolP': rationSolP,
-            'rationSurfaceToSoil': rationSurfaceToSoil,
-            'rationSoilToUndergroud': rationSoilToUndergroud,
-            'CN1': CN1,
-            'CN2': CN2,
-            'CN3': CN3,
-            'para_ph1_col': para_ph1_col,
-            'para_ph2_col': para_ph2_col,
-            'para_ph3_col': para_ph3_col,
-            'para_ph4_col': para_ph4_col,
-            'para_C_col': para_C_col,
-            'para_Q1_col': para_Q1_col,
-            'para_Q2_col': para_Q2_col,
-            'para_lnconc_col': para_lnconc_col,
-            'para_S_col': para_S_col,
-            'para_C_colP': para_C_colP,
-            'para_Q1_colP': para_Q1_colP,
-            'para_Q2_colP': para_Q2_colP,
-            'para_lnconc_colP': para_lnconc_colP,
-            'para_S_colP': para_S_colP,
-            'rzlRation':rzlRation,
-            'rzl_col_ration':rzl_col_ration,
-            'rzl_sed_ration':rzl_sed_ration,
-            'rzl_threshold':rzl_threshold,
-            'underground_lower':underground_lower,
-            'underground_upper':underground_upper,
-            'underground_sed_ration':underground_sed_ration,
-            'underground_col_ration':underground_col_ration,
-            'final_ration1':final_ration1,
-            'final_ration2':final_ration2
+            "PSP":PSP,
+            "RSDIN":RSDIN,
+            "SOL_BD":SOL_BD,
+            "SOL_CBN":SOL_CBN,
+            "CMN":CMN,
+            "CLAY":CLAY,
+            "SOL_AWC":SOL_AWC,
+            "RSDCO":RSDCO,
+            "PHOSKD":PHOSKD,
+            "V_SET":V_SET,
+            "D50":D50,
+            "AI2":AI2,
+            "RHOQ":RHOQ,
+            "BC4":BC4,
+            "RS5":RS5,
+            "RS2":RS2,
+            "INTER_SED_PARA_1":INTER_SED_PARA_1,
+            "INTER_SED_PARA_2":INTER_SED_PARA_2,
+            "INTER_SED_PARA_3":INTER_SED_PARA_3,
+            "INTER_SED_PARA_4":INTER_SED_PARA_4,
+            "INTER_SED_PARA_5":INTER_SED_PARA_5,
+            "INTER_COL_PARA_1":INTER_COL_PARA_1,
+            "INTER_COL_PARA_2":INTER_COL_PARA_2,
+            "INTER_COL_PARA_3":INTER_COL_PARA_3,
+            "INTER_COL_PARA_4":INTER_COL_PARA_4,
+            "INTER_COL_PARA_5":INTER_COL_PARA_5,
+            "INTER_SEDP_PARA_1":INTER_SEDP_PARA_1,
+            "INTER_SEDP_PARA_2":INTER_SEDP_PARA_2,
+            "INTER_SEDP_PARA_3":INTER_SEDP_PARA_3,
+            "INTER_SEDP_PARA_4":INTER_SEDP_PARA_4,
+            "INTER_SEDP_PARA_5":INTER_SEDP_PARA_5,
+            "INTER_COLP_PARA_1":INTER_COLP_PARA_1,
+            "INTER_COLP_PARA_2":INTER_COLP_PARA_2,
+            "INTER_COLP_PARA_3":INTER_COLP_PARA_3,
+            "INTER_COLP_PARA_4":INTER_COLP_PARA_4,
+            "INTER_COLP_PARA_5":INTER_COLP_PARA_5,
+            "INTER_RESP_PARA_1":INTER_RESP_PARA_1,
+            "INTER_RESP_PARA_2":INTER_RESP_PARA_2,
+            "INTER_RESP_PARA_3":INTER_RESP_PARA_3,
+            "INTER_RESP_PARA_4":INTER_RESP_PARA_4,
+            "INTER_RESP_PARA_5":INTER_RESP_PARA_5,
+            "R0":R0,
+            "R1":R1,
+            "Q_SURF_K1":Q_SURF_K1,
+            "Q_SURF_K2":Q_SURF_K2,
+            "Q_SOIL_K1":Q_SOIL_K1,
+            "PARA_PH0":PARA_PH0,
+            "PARA_PH1":PARA_PH1,
+            "PARA_PH2":PARA_PH2,
+            "PARA_PH3":PARA_PH3,
+            "PARA_PH4":PARA_PH4,
+            "CN_sloping":CN_sloping,
+            "CN_forest":CN_forest,
+            "CN_paddy":CN_paddy
         }
         paraRes.append(paraDict)
         # 关键传输函数，返回一整次模拟的所有结果
         res = trans(paraDict, 209, 44)
-        print('径流',res['runoff']['total'])
+
         allRes.append(res)
         # global SimulateSed,SimulateSedP,SimulateSolP,SimulateColP,SimulateCol
         newColPArr = [0,0,0,0,0,0]
@@ -1168,77 +1142,123 @@ celibratedTimes = 0
 class MyProblem(Problem):
     def __init__(self):
         super().__init__(
-            n_var=64,
+            n_var=54,
             n_obj=len(celibratedTarget)*3,
             xl=anp.array(
-                [0.01, # PSP 1
-                 70, # SOL_SOLP 2
-                 0, #SOL_ORGP 3
-                 0, # RSDIN 4
-                 1.2, # SOL_BD 5
-                 3, # SOL_CBN 6
-                 0.001, # CMN 7
-                 90, # CLAY 8
-                 0, # SOL_AWC 9
-                 0.02, # RSDCO 10
-                 0.01, # RSDCO_PL 11
-                 10, # PPERCO 12
-                 0, # FMINN 13
-                 0, # FMINP 14
-                 0, # FORGN 15
-                 0, # FORGP 16
-                 0, # FNH3N 17
-                 1, 1, 1, 1, 1, # 五个sed_para 18-22
-                 1, 1, 1, 1, 1, # 五个sedP_para 23-27
-                 1, 1, 1, 1, 1, # 五个solP_para 28-32
-                 0, 0, 0, #最终结果比例 33-35
-                 0, #表层->包气带的下渗比例 36
-                 0,  #包气带->浅层地下水的比例 37
-                 30, #CN1 38
-                 30, #CN2 39
-                 30,  #CN3 40
-                 -1,2,9,0, # -a(x-b)(x-c) * (0~1) ph范围与胶体 41-44
-                 1, 1, 1, 1, 1,  # 五个colP_para 45-49
-                 1, 1, 1, 1, 1,  # 五个col_para 50-54
-                 0,0,0,0, # 1 - e^(a-a*x) 壤中流的比例随着降雨量增加而增加，后两个参数为胶体、大颗粒进入壤中流 和 径流/溶解态进入壤中流的比例，最后一个参数是产生壤中流的下限
-                 0,0.51,0,0, # 壤中流进入地下水的下界/上界，胶体、大颗粒的比例
-                 0.0000001,0.0000001 #FINAL_RATION
-                 ]),  # 变量下界
+                [
+                    0.01,
+                    0,
+                    0.9,
+                    0.05,
+                    0.001,
+                    0,
+                    0,
+                    0.02,
+                    100,
+                    0,
+                    10,
+                    0.01,
+                    0.05,
+                    0.01,
+                    0.001,
+                    0.001,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    0,
+                    100,
+                    0,
+                    0,
+                    0,
+                    -20000,
+                    0,
+                    -10000,
+                    0,
+                    -100,
+                    50, # CN_sloping
+                    50, # CN_forest
+                    50, # CN_paddy
+
+                ]),  # 变量下界
             xu=anp.array(
-                [0.5, # PSP
-                 90,  # SOL_SOLP
-                 100, #SOL_ORGP
-                 10000, # RSDIN
-                 1.9, # SOL_BD
-                 4, # SOL_CBN
-                 0.003,  # CMN
-                 100,  # CLAY
-                 1, # SOL_AWC
-                 0.1,  # RSDCO
-                 0.099,  # RSDCO_PL
-                 12,  # PPERCO
-                 1, # FMINN
-                 1, # FMINP
-                 1, # FORGN
-                 1, # FORGP
-                 1,# FNH3N
-                 2, 2, 2, 2, 2,
-                 2, 2, 2, 2, 2,
-                 2, 2, 2, 2, 2,
-                 1, 1, 1,
-                 1,
-                 1,
-                 90,
-                 90,
-                 90,
-                 -1,4,11,0.08,
-                 2, 2, 2, 2, 2,
-                 2, 2, 2, 2, 2,
-                 0.1,3,3,30,
-                 0.49,0.99,3,3,
-                 10000,10000
-                 ]),  # 变量上界
-        )
+                [0.7,
+      10000,
+      2.5,
+      10,
+      0.003,
+      100,
+      1,
+      0.1,
+      200,
+      100,
+      100,
+      0.02,
+      0.5,
+      0.7,
+      0.01,
+      0.1,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      100,
+      300,
+      300,
+      300,
+      300,
+      20000,
+      10000,
+      0,
+      1000,
+      0,
+      100, # CN_sloping
+      100, # CN_forest
+      100, # CN_paddy
+      ]),  # 变量上界
+    )
 
     def _evaluate(self, x, out, *args, **kwargs):
         [objective,allRes,paraRes] = process(x[:, 0], x[:, 1], x[:, 2], x[:, 3], x[:, 4], x[:, 5], x[:, 6], x[:, 7], x[:, 8], x[:, 9], x[:, 10],
@@ -1249,10 +1269,7 @@ class MyProblem(Problem):
                      x[:,32],x[:, 33],x[:,34],x[:, 35],x[:,36],x[:,37],x[:, 38],x[:,39],
                      x[:,40],x[:,41],x[:, 42],x[:,43],
                      x[:, 44], x[:, 45], x[:, 46], x[:, 47], x[:, 48],
-                     x[:, 49], x[:, 50], x[:, 51], x[:, 52], x[:, 53],
-                     x[:, 54], x[:, 55], x[:, 56], x[:, 57],
-                     x[:, 58], x[:, 59], x[:, 60], x[:, 61],
-                     x[:, 62], x[:, 63]
+                     x[:, 49], x[:, 50],x[:, 51], x[:, 52],x[:, 53]
                    )
         path = projectFile + r'\modelResult\celibrateJson.json'
         path2 = projectFile + r'\modelResult\r2_nse.json'

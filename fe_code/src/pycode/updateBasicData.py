@@ -15,7 +15,7 @@ filePath = sys.argv[2]
 jsonPath = sys.argv[3]
 # projectName = sys.argv[4]
 #
-# type = 'landuse'
+# type = 'rusleCal'
 # filePath = r'E:\webplatform\asd'
 # jsonPath = r'E:\webplatform\fe_code\projectInfo.json'
 projectName = filePath.split('\\')[-1]
@@ -363,7 +363,6 @@ try:
         Y2 = len(C_factor[0])
         Y3 = len(L_factor[0])
         Y4 = len(S_factor[0])
-
         if X1 == X2 and X2 == X3 and X3 == X4 and Y1 == Y2 and Y2 == Y3 and Y3==Y4:
             cnt = 0
             for i in range(0,len(rusleDict)):
@@ -388,7 +387,7 @@ try:
                 if not os.path.exists(r"{}\rusle".format(filePath)):
                     os.mkdir(r"{}\rusle".format(filePath))
                 cnt += 1
-                path = r"{}\rusle\{}_{}_{}.csv".format(filePath,year,month,cnt)
+                path = r"{}\rusle\rusle{}.csv".format(filePath,cnt)
                 pd.DataFrame(oneMonthRusleDf).to_csv(path)
                 rusleDict[i]['rusle'] = oneMonthRusleSum
             with open(filePath + r'\database\R_factor.txt', 'w',encoding="utf-8") as fp:
