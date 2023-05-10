@@ -62,9 +62,9 @@ dateRange = []
 with open(projectFile+r'\database\R_factor.txt', "r", encoding="utf-8") as f:
     dateRange = json.load(f)
 phDict = {
-    '坡耕地':6,
-    '林地':6.5,
-    '水田':6
+    '坡耕地':5.75,
+    '林地':6.46,
+    '水田':5.57
 }
 def fillZero(x,y):
     return 'x' + str(x).zfill(4) + 'y' + str(y).zfill(4)
@@ -102,56 +102,31 @@ for item in landuseDict.items():
     elif item[1] == 'construct':
         buildingCode = item[0]
 # 施肥措施数据
-managementList = utils.getManagementInfo(curProjectInfo)
-# 管理措施字典
-managementDict = {
-    1:[],
-    2:[],
-    3:[],
-    4:[],
-    5:[],
-    6:[],
-    7:[],
-    8:[],
-    9:[],
-    10:[],
-    11:[],
-    12:[]
-}
+managementDict = utils.getManagementInfo(curProjectInfo)
+
 # eg.
 # mgt = {
-#     'name': '六月施肥',
-#     'description': '复合',
-#     'fertAmt': '300',
-#     'fertMonth': 6,
-#     'fertNtrPer': '0.4',
-#     'fertPhoPer': '0.6',
-#     'index': 1663500575621
+#     'name': '1',
+#     'amount': '300',
+#     'applyMonth': 6,
+#     'N_ration': '0.4',
+#     'P_ration': '0.6',
 # }
-# for management in managementList:
-#     managementDict[management['fertMonth']].append(management)
 # 日期数据
-
 [startDateTime,endDateTime] = utils.getDataRange(curProjectInfo)
 monthRainfall = utils.getMonthlyRainfall(projectFile,curProjectInfo)
-print(monthRainfall)
 # 创建空文件夹
-if not os.path.exists(projectFile+r'\modelResult'):
-    os.makedirs(projectFile+r'\modelResult')
-for i in range(1,len(monthRainfall)+1):
-    if not os.path.exists(projectFile+r'\modelResult\month'+str(i)):
-        os.makedirs(projectFile+r'\modelResult\month'+str(i))
-
+utils.createResultFile(projectFile,len(monthRainfall))
 # 开始汇流计算
 def oneMonthProcess(paraDict,month,preMonthResult):
     # 读取rusle数据
-    rusle = pd.read_csv(projectFile+r'\rusle\rusle'+str(i)+'.csv',index_col=0).values
+    rusle = pd.read_csv(projectFile+r'\rusle\rusle'+str(month)+'.csv',index_col=0).values
     # 基于D8计算每个月的降雨产流，生成runoff.csv文件
     # 地表径流、壤中流产流
     runoff_generate = copy.deepcopy(initDF)
     runoff_soil_generate = copy.deepcopy(initDF)
-    for y in range(0,Y):
-        for x in range(0,X):
+    for y in range(0,X):
+        for x in range(0,Y):
             if runoff_generate[y][x] == 0:
                 # 计算地表产流
                 CN = 70
@@ -185,7 +160,6 @@ def oneMonthProcess(paraDict,month,preMonthResult):
     runoff_flow = copy.deepcopy(runoff_generate)
     runoff_soil_flow = copy.deepcopy(runoff_soil_generate)
     # 水文汇流过程，无拦截损失
-    # 地表径流
     def confluence(x,y):
         xyCode = fillZero(x,y)
         if xyCode in transDict:
@@ -203,7 +177,6 @@ def oneMonthProcess(paraDict,month,preMonthResult):
     confluence(44,209)
     pd.DataFrame(runoff_flow).to_csv(projectFile+r'\modelResult\month'+str(month)+r'\地表径流_汇流量.csv')
     pd.DataFrame(runoff_soil_flow).to_csv(projectFile+r'\modelResult\month'+str(month)+r'\壤中流_汇流量.csv')
-
 
     # 本月的土壤磷循环、施肥措施，生成六个不同的soilP.csv文件
     # 初始化参数
@@ -228,8 +201,8 @@ def oneMonthProcess(paraDict,month,preMonthResult):
         orgN_sta = copy.deepcopy(initDF)
         orgN_frsh = copy.deepcopy(initDF)
         # 初始化部分库
-        for y in range(0,Y):
-            for x in range(0,X):
+        for y in range(0,X):
+            for x in range(0,Y):
                 if initDF[y][x] !=0 or landuseDF[y][x] == waterCode or landuseDF[y][x] == buildingCode:
                     continue
                 else:
@@ -347,8 +320,8 @@ def oneMonthProcess(paraDict,month,preMonthResult):
         N_input = 0
         P_input = 0
         for management in monManagementList:
-            N_input += float(management['fertAmt'])*float(management['fertNtrPer'])
-            P_input += float(management['fertAmt'])*float(management['fertPhoPer'])
+            N_input += float(management['amount'])*float(management['N_ratio'])
+            P_input += float(management['amount'])*float(management['P_ratio'])
         NO3_fert_slope = paraDict['FMINN'] * (1 - paraDict['FNH3N']) * N_input
         NH4_fert_slope = paraDict['FMINN'] * (1 - paraDict['FNH3N']) * N_input
         orgN_frsh_slope = 0.5 * paraDict['FORGN'] * N_input
@@ -439,62 +412,60 @@ def oneMonthProcess(paraDict,month,preMonthResult):
     # 地表、壤中流、地下水胶体模拟
     colSource_surface = copy.deepcopy(initDF)
     colSource_soil = copy.deepcopy(initDF)
-    colSource_underground = copy.deepcopy(initDF)
-    slopeColPara = -1 * ((phDict['坡耕地'] - paraDict['para_ph2_col'])*(phDict['坡耕地'] - paraDict['para_ph3_col'])) * paraDict['para_ph4_col']
-    paddyColPara = -1 * ((phDict['水田'] - paraDict['para_ph2_col'])*(phDict['水田'] - paraDict['para_ph3_col'])) * paraDict['para_ph4_col']
-    forestColPara = -1 * ((phDict['林地'] - paraDict['para_ph2_col'])*(phDict['林地'] - paraDict['para_ph3_col'])) * paraDict['para_ph4_col']
-    for y in range(0, Y):
-        for x in range(0, X):
+    slopeColPara = 1.55 * (paraDict["PARA_PH0"] +
+                           paraDict["PARA_PH1"] * phDict['坡耕地'] +
+                           paraDict["PARA_PH2"] * (phDict['坡耕地']**2) +
+                           paraDict["PARA_PH3"] * (phDict['坡耕地'] ** 3) +
+                           paraDict["PARA_PH4"] * (phDict['坡耕地'] ** 4)
+                           )
+    paddyColPara = 5.27 *(paraDict["PARA_PH0"] +
+                           paraDict["PARA_PH1"] * phDict['水田'] +
+                           paraDict["PARA_PH2"] * (phDict['水田']**2) +
+                           paraDict["PARA_PH3"] * (phDict['水田'] ** 3) +
+                           paraDict["PARA_PH4"] * (phDict['水田'] ** 4)
+                           )
+    forestColPara = 0.46 *(paraDict["PARA_PH0"] +
+                           paraDict["PARA_PH1"] * phDict['林地'] +
+                           paraDict["PARA_PH2"] * (phDict['林地']**2) +
+                           paraDict["PARA_PH3"] * (phDict['林地'] ** 3) +
+                           paraDict["PARA_PH4"] * (phDict['林地'] ** 4)
+                           )
+    for y in range(0, X):
+        for x in range(0, Y):
+            runoff = runoff_generate[y][x]
+            soil = runoff_soil_generate[y][x]
+            if runoff + soil == 0:
+                runoff_ratio = 0
+                soil_ratio = 0
+            else:
+                runoff_ratio = runoff / (runoff + soil)
+                soil_ratio = soil / (runoff + soil)
+            source = 0
             if landuseDF[y][x] == float(forestCode):
                 source = forestColPara * rusle[y][x]
-                # surfaceToSoil = 1 - math.exp(paraDict['rzlRation'] * (1 - runoff_generate[y][x]))
-                surfaceToSoil = (slope[y][x] / 100 + P[y][x]) / 2
-                soilToUnderground = (demDF[y][x] - minDEM) * (paraDict['underground_upper'] - paraDict['underground_lower']) / (maxDEM - minDEM) + paraDict['underground_lower']
-                surfaceToSoil *= paraDict['rzl_col_ration']
-                soilToUnderground *= paraDict['underground_col_ration']
-                colSource_soil[y][x] = source * surfaceToSoil * (1 - soilToUnderground)
-                colSource_underground[y][x] = colSource_soil[y][x] * soilToUnderground
-                colSource_surface[y][x] = source - colSource_soil[y][x] -  colSource_underground[y][x]
             elif landuseDF[y][x] == float(slopelandCode):
                 source = slopeColPara * rusle[y][x]
-                # surfaceToSoil = 1 - math.exp(paraDict['rzlRation'] * (1 - runoff_generate[y][x]))
-                surfaceToSoil = (slope[y][x] / 100 + P[y][x]) / 2
-                soilToUnderground = (demDF[y][x] - minDEM) * (
-                            paraDict['underground_upper'] - paraDict['underground_lower']) / (maxDEM - minDEM) + \
-                                    paraDict['underground_lower']
-                surfaceToSoil *= paraDict['rzl_col_ration']
-                soilToUnderground *= paraDict['underground_col_ration']
-                colSource_soil[y][x] = source * surfaceToSoil * (1 - soilToUnderground)
-                colSource_underground[y][x] = colSource_soil[y][x] * soilToUnderground
-                colSource_surface[y][x] = source - colSource_soil[y][x] - colSource_underground[y][x]
             elif landuseDF[y][x] == float(paddylandCode):
                 source = paddyColPara * rusle[y][x]
-                # surfaceToSoil = 1 - math.exp(paraDict['rzlRation'] * (1 - runoff_generate[y][x]))
-                surfaceToSoil = (slope[y][x] / 100 + P[y][x]) / 2
-                soilToUnderground = (demDF[y][x] - minDEM) * (
-                            paraDict['underground_upper'] - paraDict['underground_lower']) / (maxDEM - minDEM) + \
-                                    paraDict['underground_lower']
-                surfaceToSoil *= paraDict['rzl_col_ration']
-                soilToUnderground *= paraDict['underground_col_ration']
-                colSource_soil[y][x] = source * surfaceToSoil * (1 - soilToUnderground)
-                colSource_underground[y][x] = colSource_soil[y][x] * soilToUnderground
-                colSource_surface[y][x] = source - colSource_soil[y][x] - colSource_underground[y][x]
+            colSource_soil[y][x] = source * soil_ratio
+            colSource_surface[y][x] = source * runoff_ratio
     # 污染源计算，获得solPSource，sedPSource两个DF
     if True:
         solPSource_surface = copy.deepcopy(initDF)
         solPSource_soil = copy.deepcopy(initDF)
-        solPSource_underground = copy.deepcopy(initDF)
 
         sedPSource_surface = copy.deepcopy(initDF)
         sedPSource_soil = copy.deepcopy(initDF)
-        sedPSource_underground = copy.deepcopy(initDF)
 
         colPSource_surface = copy.deepcopy(initDF)
         colPSource_soil = copy.deepcopy(initDF)
-        colPSource_underground = copy.deepcopy(initDF)
 
-        for y in range(0, Y):
-            for x in range(0, X):
+        for y in range(0, X):
+            for x in range(0, Y):
+                runoff = runoff_generate[y][x]
+                soil = runoff_soil_generate[y][x]
+                runoff_ratio = runoff / (runoff + soil)
+                soil_ratio = soil / (runoff + soil)
                 if initDF[y][x] !=0 or landuseDF[y][x] == waterCode or landuseDF[y][x] == buildingCode or runoff_flow[y][x]==0 or rusle[y][x]==0:
                     continue
                 else:
@@ -504,46 +475,30 @@ def oneMonthProcess(paraDict,month,preMonthResult):
                     EPsed = 0.78 * conc_sedSurf ** (-0.2468)
                     solPSource = P_solution[y][x] * runoff_flow[y][x] * 0.09 / (paraDict['SOL_BD'] * 10 * 0.5)
                     sedPSource = 0.0001 * rusle[y][x] * conc_sedP * EPsed
-                    colPSource = 0.0001 * (colSource_surface[y][x]+colSource_soil[y][x]+colSource_underground[y][x]) * conc_sedP * EPsed
-                    # print(solPSource,sedPSource,colPSource)
-                    # surfaceToSoil = 1-math.exp(paraDict['rzlRation']*(1-runoff_generate[y][x]))
-                    surfaceToSoil = (slope[y][x] / 100 + P[y][x]) / 2
-                    soilToUnderground = (demDF[y][x] - minDEM) * (paraDict['underground_upper']-paraDict['underground_lower']) / (maxDEM-minDEM) + paraDict['underground_lower']
+                    colPSource = 0.0001 * (colSource_surface[y][x]+colSource_soil[y][x]) * conc_sedP * EPsed
+                    solPSource_soil[y][x] = solPSource * soil_ratio
+                    solPSource_surface[y][x] = solPSource * runoff_ratio
 
-                    solPSource_soil[y][x] = solPSource * surfaceToSoil * (1-soilToUnderground)
-                    solPSource_underground[y][x] = solPSource * surfaceToSoil * soilToUnderground
-                    solPSource_surface[y][x] = solPSource - solPSource_soil[y][x] - solPSource_underground[y][x]
+                    sedPSource_soil[y][x] = sedPSource * soil_ratio
+                    sedPSource_surface[y][x] = sedPSource * runoff_ratio
 
-                    sedPSource_soil[y][x] = sedPSource  * surfaceToSoil * (1-soilToUnderground) * paraDict['rzl_sed_ration']
-                    sedPSource_underground[y][x] = sedPSource  * surfaceToSoil * soilToUnderground * paraDict['underground_sed_ration']
-                    sedPSource_surface[y][x] = sedPSource - sedPSource_soil[y][x] - sedPSource_underground[y][x]
-
-                    colPSource_soil[y][x] = colPSource  * surfaceToSoil* (1-soilToUnderground) * paraDict['rzl_col_ration']
-                    colPSource_underground[y][x] = colPSource  * surfaceToSoil * soilToUnderground * paraDict[
-                        'underground_col_ration']
-                    colPSource_surface[y][x] = colPSource - colPSource_soil[y][x] - colPSource_underground[y][x]
-
+                    colPSource_soil[y][x] = colPSource * soil_ratio
+                    colPSource_surface[y][x] = colPSource * runoff_ratio
     # 污染汇
     solPFlow_surface = copy.deepcopy(solPSource_surface)
     colPFlow_surface = copy.deepcopy(colPSource_surface)
     sedPFlow_surface = copy.deepcopy(sedPSource_surface)
     colFlow_surface = copy.deepcopy(colPSource_surface)
     sedFlow = copy.deepcopy(rusle)
-
     solPFlow_soil = copy.deepcopy(solPSource_soil)
     colPFlow_soil = copy.deepcopy(colPSource_soil)
     sedPFlow_soil = copy.deepcopy(sedPSource_soil)
     colFlow_soil = copy.deepcopy(colPSource_soil)
 
-    solPFlow_underground = copy.deepcopy(solPSource_underground)
-    colPFlow_underground = copy.deepcopy(colPSource_underground)
-    sedPFlow_underground = copy.deepcopy(sedPSource_underground)
-    colFlow_underground = copy.deepcopy(colPSource_underground)
-
     def flow(x,y):
         xyCode = fillZero(x, y)
-        if not slope[y][x] > 0:
-            slope[y][x] = 0.01
+        if not slopeDF[y][x] > 0:
+            slopeDF[y][x] = 0.01
         if xyCode in transDict:
             fromCode = transDict[xyCode]
             for code in fromCode:
@@ -559,35 +514,32 @@ def oneMonthProcess(paraDict,month,preMonthResult):
                 colPFlow_soil[y][x] += preRes['colPFlow_soil']
                 sedPFlow_soil[y][x] += preRes['sedPFlow_soil']
                 colFlow_soil[y][x] += preRes['colFlow_soil']
-                solPFlow_underground[y][x] += preRes['solPFlow_underground']
-                colPFlow_underground[y][x] += preRes['colPFlow_underground']
-                sedPFlow_underground[y][x] += preRes['sedPFlow_underground']
-                colFlow_underground[y][x] += preRes['colFlow_underground']
+
 
                 solPFlow_surface[y][x] *=  0.25 * (1 - paraDict['para_Q1_solP'] ** (-runoff_flow[y][x])
-                                                 + paraDict['para_C_solP'] ** (-C[y][x])
-                                                 + paraDict['para_S_solP'] ** (-slope[y][x])
+                                                 + paraDict['para_C_solP'] ** (-C_factorDF[y][x] / 10000)
+                                                 + paraDict['para_S_solP'] ** (-slopeDF[y][x])
                                                  + 1 - paraDict['para_lnconc_solP'] ** (-math.log(solPSource_surface[y][x]) if solPSource_surface[y][x] > 1 else 0))
 
                 colPFlow_surface[y][x] *= 0.25 * (1 - paraDict['para_Q1_col'] ** (-runoff_flow[y][x])
-                                        + paraDict['para_C_col'] ** (-C[y][x])
-                                        + paraDict['para_S_col'] ** (-slope[y][x])
+                                        + paraDict['para_C_col'] ** (-C_factorDF[y][x])
+                                        + paraDict['para_S_col'] ** (-slopeDF[y][x])
                                         + 1 - paraDict['para_lnconc_col'] ** (-math.log(colPFlow_surface[y][x]) if colPFlow_surface[y][x] > 1 else 0))
 
                 sedPFlow_surface[y][x] *= 0.25 * (1 - paraDict['para_Q1_sedP'] ** (-runoff_flow[y][x])
-                                        + paraDict['para_C_sedP'] ** (-C[y][x])
-                                        + paraDict['para_S_sedP'] ** (-slope[y][x])
+                                        + paraDict['para_C_sedP'] ** (-C_factorDF[y][x])
+                                        + paraDict['para_S_sedP'] ** (-slopeDF[y][x])
                                         + 1 - paraDict['para_lnconc_sedP'] ** (-math.log(sedPFlow_surface[y][x]) if sedPFlow_surface[y][x] > 1 else 0))
 
                 colFlow_surface[y][x] *= 0.25 * (1 - paraDict['para_Q1_col'] ** (-runoff_flow[y][x])
-                                        + paraDict['para_C_col'] ** (-C[y][x])
-                                        + paraDict['para_S_col'] ** (-slope[y][x])
+                                        + paraDict['para_C_col'] ** (-C_factorDF[y][x])
+                                        + paraDict['para_S_col'] ** (-slopeDF[y][x])
                                         + 1 - paraDict['para_lnconc_col'] ** (-math.log(colFlow_surface[y][x]) if colFlow_surface[y][x] > 1 else 0))
 
 
                 sedFlow[y][x] *= 0.25 * (1 - paraDict['para_Q1_sed'] ** (-runoff_flow[y][x])
-                                        + paraDict['para_C_sed'] ** (-C[y][x])
-                                        + paraDict['para_S_sed'] ** (-slope[y][x])
+                                        + paraDict['para_C_sed'] ** (-C_factorDF[y][x])
+                                        + paraDict['para_S_sed'] ** (-slopeDF[y][x])
                                         + 1 - paraDict['para_lnconc_sed'] ** (-math.log(sedFlow[y][x]) if sedFlow[y][x] > 1 else 0))
 
                 solPFlow_soil[y][x] *= 0.5 * (1 - paraDict['para_Q1_solP'] ** (-runoff_flow[y][x])
@@ -613,10 +565,6 @@ def oneMonthProcess(paraDict,month,preMonthResult):
                 'colPFlow_soil': colPFlow_soil[y][x],
                 'sedPFlow_soil': sedPFlow_soil[y][x],
                 'colFlow_soil': colFlow_soil[y][x],
-                'solPFlow_underground': solPFlow_underground[y][x],
-                'colPFlow_underground': colPFlow_underground[y][x],
-                'sedPFlow_underground': sedPFlow_underground[y][x],
-                'colFlow_underground': colFlow_underground[y][x],
             }
         else:
             return {
@@ -629,10 +577,6 @@ def oneMonthProcess(paraDict,month,preMonthResult):
                 'colPFlow_soil':colPFlow_soil[y][x],
                 'sedPFlow_soil':sedPFlow_soil[y][x],
                 'colFlow_soil':colFlow_soil[y][x],
-                'solPFlow_underground':solPFlow_underground[y][x],
-                'colPFlow_underground':colPFlow_underground[y][x],
-                'sedPFlow_underground':sedPFlow_underground[y][x],
-                'colFlow_underground':colFlow_underground[y][x],
             }
     flow(44,209)
     # pd.DataFrame(sedPSource_surface).to_csv(r'C:\Users\yezouhua\Desktop\master\webPlatform\nineMonth\modelResult\sedPSource.csv')
@@ -656,25 +600,19 @@ def oneMonthProcess(paraDict,month,preMonthResult):
 
         'runoff_generate':runoff_generate,
         'runoff_soil_generate':runoff_soil_generate,
-        'runoff_groundwater_generate':runoff_groundwater_generate,
 
         'runoff_flow':runoff_flow,
         'runoff_soil_flow':runoff_soil_flow,
-        'runoff_groundwater_flow':runoff_groundwater_flow,
 
         'colSource_surface':colSource_surface,
         'colSource_soil':colSource_soil,
-        'colSource_underground':colSource_underground,
 
         'solPSource_surface':solPSource_surface,
         'solPSource_soil':solPSource_soil,
-        'solPSource_underground':solPSource_underground,
         'sedPSource_surface':sedPSource_surface,
         'sedPSource_soil':sedPSource_soil,
-        'sedPSource_underground':sedPSource_underground,
         'colPSource_surface':colPSource_surface,
         'colPSource_soil':colPSource_soil,
-        'colPSource_underground':colPSource_underground,
 
         'solPFlow_surface':solPFlow_surface,
         'colPFlow_surface':colPFlow_surface,
@@ -685,10 +623,6 @@ def oneMonthProcess(paraDict,month,preMonthResult):
         'colPFlow_soil':colPFlow_soil,
         'sedPFlow_soil':sedPFlow_soil,
         'colFlow_soil':colFlow_soil,
-        'solPFlow_underground':solPFlow_underground,
-        'colPFlow_underground':colPFlow_underground,
-        'sedPFlow_underground':sedPFlow_underground,
-        'colFlow_underground':colFlow_underground,
 
 
     }
@@ -696,6 +630,7 @@ def oneMonthProcess(paraDict,month,preMonthResult):
     # 本月的土壤磷、泥沙产生量，生成sedP、solP、sediment csv文件
 
     # 进行反向递归+拦截模块，生成sedP、solP、sediment的汇流量
+
 
 def trans(paraDict,x,y):
     resArr = {
@@ -1196,7 +1131,6 @@ class MyProblem(Problem):
       100, # CN_paddy
       ]),  # 变量上界
     )
-
     def _evaluate(self, x, out, *args, **kwargs):
         [objective,allRes,paraRes] = process(x[:, 0], x[:, 1], x[:, 2], x[:, 3], x[:, 4], x[:, 5], x[:, 6], x[:, 7], x[:, 8], x[:, 9], x[:, 10],
                      x[:, 11],x[:, 12], x[:, 13],x[:, 14],x[:, 15], x[:, 16],
@@ -1211,7 +1145,6 @@ class MyProblem(Problem):
         path = projectFile + r'\modelResult\celibrateJson.json'
         path2 = projectFile + r'\modelResult\r2_nse.json'
         path3 = projectFile + r'\modelResult\parameters.json'
-
         if os.path.exists(path):
             with open(path, 'r') as load_f:
                 load_dict = json.load(load_f)
@@ -1276,8 +1209,6 @@ algorithm = NSGA2(
     mutation=get_mutation("real_pm", eta=20),
     eliminate_duplicates=True
 )
-
-
 # 求解方程
 res = minimize(MyProblem(),
                algorithm,

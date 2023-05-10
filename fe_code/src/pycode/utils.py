@@ -1,6 +1,7 @@
 import json
 import calendar
 import datetime
+import os
 from copy import deepcopy
 def fillZero(x,y):
     return 'x' + str(x).zfill(4) + 'y' + str(y).zfill(4)
@@ -69,7 +70,7 @@ def d8toDict(d8DF,projectFile):
     with open(projectFile+r'\transDict.json','w+') as file:
         file.write(transDict_json)
     return transDict
-
+# 检查所有空间数据面积是否匹配，不匹配污染进行模拟
 def checkAreaMatch(dataframes,names):
     X = len(dataframes[0])
     Y = len(dataframes[0][0])
@@ -89,7 +90,7 @@ def checkAreaMatch(dataframes,names):
             else:
                 initDF[x][y] = -1
     return [X,Y,initDF]
-
+# 土地利用类型全都以1、2、3的形式表示，获取每个code对应的土地利用类型是什么
 def getLanduseCode(projectInfo):
     # [{'type': 'forest', 'code': 1}, {'type': 'paddy', 'code': 2},
     # {'type': 'water', 'code': 3}, {'type': 'sloping', 'code': 4},
@@ -99,10 +100,28 @@ def getLanduseCode(projectInfo):
     for c in code :
         landuseDict[c["code"]] = c['type']
     return landuseDict
-
+# 获取用户定义的施肥措施信息
 def getManagementInfo(projectInfo):
-    return projectInfo["measures"]
-
+    # 管理措施字典
+    managementDict = {
+        1: [],
+        2: [],
+        3: [],
+        4: [],
+        5: [],
+        6: [],
+        7: [],
+        8: [],
+        9: [],
+        10: [],
+        11: [],
+        12: []
+    }
+    for measure in projectInfo["measures"]:
+        month = measure['applyMonth']
+        managementDict[int(month)].append(measure)
+    return managementDict
+# 获取用户设置的模型运行时间
 def getDataRange(projectInfo):
     startY = projectInfo["periods"]["startDate"].split('/')[0]
     startM = projectInfo["periods"]["startDate"].split('/')[1]
@@ -123,7 +142,7 @@ def getDataRange(projectInfo):
         startDateTime,
         endDateTime
     ]
-
+# 基于日降雨计算月降雨量
 def getMonthlyRainfall(filePath,projInfo):
 
         rainfallPath = filePath + r'\database\rainfall.txt'
@@ -246,3 +265,12 @@ def getMonthlyRainfall(filePath,projInfo):
         # with open(filePath + r'\database\R_factor.txt', 'w') as json_file:
         #     json_file.write(json_str)
         return rainfallList
+
+def createResultFile(projectFile,monthRainfall):
+    if not os.path.exists(projectFile + r'\modelResult'):
+        os.makedirs(projectFile + r'\modelResult')
+    for i in range(1, monthRainfall + 1):
+        if not os.path.exists(projectFile + r'\modelResult\month' + str(i)):
+            os.makedirs(projectFile + r'\modelResult\month' + str(i))
+
+
