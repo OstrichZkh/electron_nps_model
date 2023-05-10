@@ -418,6 +418,7 @@ def oneMonthProcess(paraDict,month,preMonthResult):
     # 地表、壤中流、地下水胶体模拟
     colSource_surface = copy.deepcopy(initDF)
     colSource_soil = copy.deepcopy(initDF)
+
     slopeColPara = 1.55 * (paraDict["PARA_PH0"] +
                            paraDict["PARA_PH1"] * phDict['坡耕地'] +
                            paraDict["PARA_PH2"] * (phDict['坡耕地']**2) +
@@ -430,12 +431,19 @@ def oneMonthProcess(paraDict,month,preMonthResult):
                            paraDict["PARA_PH3"] * (phDict['水田'] ** 3) +
                            paraDict["PARA_PH4"] * (phDict['水田'] ** 4)
                            )
+
     forestColPara = 0.46 *(paraDict["PARA_PH0"] +
                            paraDict["PARA_PH1"] * phDict['林地'] +
                            paraDict["PARA_PH2"] * (phDict['林地']**2) +
                            paraDict["PARA_PH3"] * (phDict['林地'] ** 3) +
                            paraDict["PARA_PH4"] * (phDict['林地'] ** 4)
                            )
+    if (forestColPara < 0 or forestColPara > 10) or (paddyColPara < 0 or paddyColPara > 10) or (slopeColPara < 0 or slopeColPara > 10):
+        forestColPara = 0.46 * paraDict['defaultCol']
+        paddyColPara  = 5.27 * paraDict['defaultCol']
+        slopeColPara  = 1.55 * paraDict['defaultCol']
+
+
     for y in range(0, X):
         for x in range(0, Y):
             runoff = runoff_generate[y][x]
@@ -453,7 +461,6 @@ def oneMonthProcess(paraDict,month,preMonthResult):
                 source = slopeColPara * rusle[y][x]
             elif landuseDF[y][x] == float(paddylandCode):
                 source = paddyColPara * rusle[y][x]
-            print(source,month,rusle[y][x],paddyColPara)
             colSource_soil[y][x] = source * soil_ratio
             colSource_surface[y][x] = source * runoff_ratio
     # 污染源计算，获得solPSource，sedPSource两个DF
@@ -555,12 +562,13 @@ def oneMonthProcess(paraDict,month,preMonthResult):
                                               paraDict['INTER_SEDP_PARA_4'] * (sedPSource_surface[y][x]) + \
                                               paraDict['INTER_SEDP_PARA_5'] * (slopeDF[y][x])
 
-                solPFlow_surface[y][x] *= solP_loss * runoff_ratio
-                colPFlow_surface[y][x] *= colP_loss * runoff_ratio
-                sedPFlow_surface[y][x] *= sedP_loss * runoff_ratio
-                solPFlow_soil[y][x] *= solP_loss * soil_ratio
-                colPFlow_soil[y][x] *= colP_loss * soil_ratio
-                sedPFlow_soil[y][x] *= sedP_loss * soil_ratio
+                solPFlow_surface[y][x] = solP_loss * runoff_ratio
+                colPFlow_surface[y][x] = colP_loss * runoff_ratio
+                sedPFlow_surface[y][x] = sedP_loss * runoff_ratio
+                solPFlow_soil[y][x] = solP_loss * soil_ratio
+                colPFlow_soil[y][x] = colP_loss * soil_ratio
+                sedPFlow_soil[y][x] = sedP_loss * soil_ratio
+
                 #
                 #
                 # solPFlow_surface[y][x] *=  0.25 * (1 - paraDict['para_Q1_solP'] ** (-runoff_flow[y][x])
@@ -627,7 +635,6 @@ def oneMonthProcess(paraDict,month,preMonthResult):
     flow(44,209)
     # pd.DataFrame(sedPSource_surface).to_csv(r'C:\Users\yezouhua\Desktop\master\webPlatform\nineMonth\modelResult\sedPSource.csv')
     # pd.DataFrame(sedPFlow_surface).to_csv(r'C:\Users\yezouhua\Desktop\master\webPlatform\nineMonth\modelResult\sedPFlow.csv')
-    # print(colSource_surface[105][50],colFlow_surface[105][50])
     return {
         'minP_act':minP_act,
         'minP_sta':minP_sta,
@@ -762,7 +769,6 @@ def trans(paraDict,x,y):
 
         else:
             res = oneMonthProcess(paraDict,i,res)
-            print(res['runoff_flow'][x][y],res['sedPFlow_surface'][x][y])
             if res['runoff_flow'][x][y] == 0:
                 resArr['runoff']['surface'].append(0)
                 resArr['runoff']['soil'].append(0)
@@ -840,6 +846,13 @@ SimulateTP = []
 
 
 def r2(obs, pre,key):
+    for i in range(0,len(pre)):
+        if math.isnan(pre[i]):
+            pre[i] = 0
+    if len(obs) > len(pre):
+        obs = obs[0:len(pre)]
+    elif len(pre) > len(obs):
+        pre = pre[0:len(pre)]
     fenMu1 = 0
     fenMu2 = 0
     fenZi = 0
@@ -854,6 +867,14 @@ def r2(obs, pre,key):
     return -(fenZi / fenMu) ** 2
 
 def NSE(obs, pre,key):
+    for i in range(0,len(pre)):
+        if math.isnan(pre[i]):
+            pre[i] = 0
+    if len(obs) > len(pre):
+        obs = obs[0:len(pre)]
+    elif len(pre) > len(obs):
+        pre = pre[0:len(pre)]
+
     fenMu = 0
     fenZi = 0
     obsMean = np.mean(obs)
@@ -883,7 +904,7 @@ def process(
         INTER_RESP_PARA_3,INTER_RESP_PARA_4,INTER_RESP_PARA_5,
         R0,R1,Q_SURF_K1,Q_SURF_K2,Q_SOIL_K1,PARA_PH0,PARA_PH1,
         PARA_PH2,PARA_PH3,PARA_PH4,CN_sloping,CN_forest,CN_paddy,
-        FMINN,FNH3N,FORGN,FMINP,FORGP
+        FMINN,FNH3N,FORGN,FMINP,FORGP,defaultCol
             ):
     global objective_r2_sedP,objective_nse_sedP,\
     objective_r2_solP,objective_nse_solP,objective_r2_sed,\
@@ -911,7 +932,7 @@ def process(
         INTER_RESP_PARA_3,INTER_RESP_PARA_4,INTER_RESP_PARA_5, \
         R0,R1,Q_SURF_K1,Q_SURF_K2,Q_SOIL_K1,PARA_PH0,PARA_PH1, \
         PARA_PH2,PARA_PH3,PARA_PH4,CN_sloping,CN_forest,CN_paddy,\
-            FMINN,FNH3N,FORGN,FMINP,FORGP in zip(
+            FMINN,FNH3N,FORGN,FMINP,FORGP,defaultCol in zip(
         PSP, RSDIN, SOL_BD, SOL_CBN, CMN, CLAY, SOL_AWC, RSDCO,
         PHOSKD, V_SET, D50, AI2, RHOQ, BC4, RS5, RS2, INTER_SED_PARA_1,
         INTER_SED_PARA_2, INTER_SED_PARA_3, INTER_SED_PARA_4,
@@ -924,7 +945,7 @@ def process(
         INTER_RESP_PARA_3, INTER_RESP_PARA_4, INTER_RESP_PARA_5,
         R0, R1, Q_SURF_K1, Q_SURF_K2, Q_SOIL_K1, PARA_PH0, PARA_PH1,
         PARA_PH2, PARA_PH3, PARA_PH4, CN_sloping,CN_forest,CN_paddy,
-        FMINN,FNH3N,FORGN,FMINP,FORGP
+        FMINN,FNH3N,FORGN,FMINP,FORGP,defaultCol
     ):
         time += 1
         # 一组参数
@@ -987,7 +1008,8 @@ def process(
             "FNH3N":FNH3N,
             "FORGN":FORGN,
             "FMINP":FMINP,
-            "FORGP":FORGP
+            "FORGP":FORGP,
+            "defaultCol":defaultCol
         }
         paraRes.append(paraDict)
         # 关键传输函数，返回一整次模拟的所有结果
@@ -1057,7 +1079,7 @@ celibratedTimes = 0
 class MyProblem(Problem):
     def __init__(self):
         super().__init__(
-            n_var=59,
+            n_var=60,
             n_obj=len(celibratedTarget)*3,
             xl=anp.array(
                 [
@@ -1107,14 +1129,15 @@ class MyProblem(Problem):
                     0,
                     0,
                     0,
-                    -20000,
-                    0,
-                    -10000,
-                    0,
-                    -100,
+                    -14000,
+                    8000,
+                    -3000,
+                    200,
+                    -10,
                     50, # CN_sloping
                     50, # CN_forest
                     50, # CN_paddy
+                    0,
                     0,
                     0,
                     0,
@@ -1169,11 +1192,11 @@ class MyProblem(Problem):
                   300,
                   300,
                   300,
-                  20000,
-                  10000,
-                  0,
-                  1000,
-                  0,
+                 -12000,
+                 12000,
+                 -2000,
+                 300,
+                 -8,
                   100, # CN_sloping
                   100, # CN_forest
                   100, # CN_paddy
@@ -1182,6 +1205,7 @@ class MyProblem(Problem):
                  0.5,
                  0.5,
                  0.5,
+                 5
       ]),  # 变量上界
     )
     def _evaluate(self, x, out, *args, **kwargs):
@@ -1194,7 +1218,7 @@ class MyProblem(Problem):
                      x[:,40],x[:,41],x[:, 42],x[:,43],
                      x[:, 44], x[:, 45], x[:, 46], x[:, 47], x[:, 48],
                      x[:, 49], x[:, 50],x[:, 51], x[:, 52],x[:, 53],
-                     x[:, 54], x[:, 55], x[:, 56], x[:, 57], x[:, 58],
+                     x[:, 54], x[:, 55], x[:, 56], x[:, 57], x[:, 58],x[:, 59],
                    )
         path = projectFile + r'\modelResult\celibrateJson.json'
         path2 = projectFile + r'\modelResult\r2_nse.json'
@@ -1274,6 +1298,5 @@ res = minimize(MyProblem(),
 # 取消警告
 from pymoo.config import Config
 Config.show_compile_hint = False
-# print(res)
 print('res.X', res.X)
 print('res.F', res.F)  # 显示结果
