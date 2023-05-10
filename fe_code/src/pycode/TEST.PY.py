@@ -1,5 +1,3 @@
-if True:
-    a = 1
-else:
-    a = 2
+a =  1 + \
+     1
 print(a)

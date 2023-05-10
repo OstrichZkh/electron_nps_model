@@ -125,6 +125,8 @@ def oneMonthProcess(paraDict,month,preMonthResult):
     # 地表径流、壤中流产流
     runoff_generate = copy.deepcopy(initDF)
     runoff_soil_generate = copy.deepcopy(initDF)
+    rainfall = monthRainfall[month - 1]['rainfall']
+
     for y in range(0,X):
         for x in range(0,Y):
             if runoff_generate[y][x] == 0:
@@ -137,7 +139,7 @@ def oneMonthProcess(paraDict,month,preMonthResult):
                 elif landuseDF[y][x] == float(paddylandCode):
                     CN = paraDict['CN_paddy']
                 S = 25.4*(1000/CN-10)
-                rainfall = monthRainfall[month - 1]['rainfall']
+
                 Q_surf = (rainfall- 0.2 * S) ** 2 / (rainfall + 0.8 * S)  # 2-3
                 if rainfall < paraDict['R0']:
                 #  小于R0，全为壤中流
@@ -320,8 +322,8 @@ def oneMonthProcess(paraDict,month,preMonthResult):
         N_input = 0
         P_input = 0
         for management in monManagementList:
-            N_input += float(management['amount'])*float(management['N_ratio'])
-            P_input += float(management['amount'])*float(management['P_ratio'])
+            N_input += float(management['amount'])*float(management['N_ration'])
+            P_input += float(management['amount'])*float(management['P_ration'])
         NO3_fert_slope = paraDict['FMINN'] * (1 - paraDict['FNH3N']) * N_input
         NH4_fert_slope = paraDict['FMINN'] * (1 - paraDict['FNH3N']) * N_input
         orgN_frsh_slope = 0.5 * paraDict['FORGN'] * N_input
@@ -330,8 +332,8 @@ def oneMonthProcess(paraDict,month,preMonthResult):
         orgP_frsh_slope = 0.5 * paraDict['FORGP'] * P_input
         orgP_hum_slope =  0.5 * paraDict['FORGP'] *P_input
         # 本月变化
-        for y in range(0,Y):
-            for x in range(0,X):
+        for y in range(0,X):
+            for x in range(0,Y):
                 if landuseDF[y][x] == waterCode or landuseDF[y][x] == buildingCode:
                     continue
                 else:
@@ -370,8 +372,12 @@ def oneMonthProcess(paraDict,month,preMonthResult):
                     orgN_frsh[y][x] -= N_dee_ly + N_min_frsh_ly  # 分解的新生氮
                     orgN_hum[y][x] = orgN_act[y][x] + orgN_sta[y][x]  # 腐殖质的有机氮=活性+稳定
                     #   （三）、磷的矿化作用
-                    orgP_act[y][x] = orgP_hum[y][x] * orgN_act[y][x] / (orgN_act[y][x] + orgN_sta[y][x])  # 3-50
-                    orgP_sta[y][x] = orgP_hum[y][x] * orgN_sta[y][x] / (orgN_act[y][x] + orgN_sta[y][x])  # 3-51
+                    if orgN_act[y][x] + orgN_sta[y][x] == 0:
+                        orgP_act[y][x] = orgP_hum[y][x] * 0.5
+                        orgP_sta[y][x] = orgP_hum[y][x] * 0.5
+                    else:
+                        orgP_act[y][x] = orgP_hum[y][x] * orgN_act[y][x] / (orgN_act[y][x] + orgN_sta[y][x])  # 3-50
+                        orgP_sta[y][x] = orgP_hum[y][x] * orgN_sta[y][x] / (orgN_act[y][x] + orgN_sta[y][x])  # 3-51
                     p_mina_ly = 1.4 * paraDict['RSDCO'] * math.sqrt(y_tmp_ly * y_sw_ly) * orgP_act[y][
                         x]  # 3-52 从活性有机磷矿化到溶解磷
                     if p_mina_ly > orgP_sta[y][x]:
@@ -447,6 +453,7 @@ def oneMonthProcess(paraDict,month,preMonthResult):
                 source = slopeColPara * rusle[y][x]
             elif landuseDF[y][x] == float(paddylandCode):
                 source = paddyColPara * rusle[y][x]
+            print(source,month,rusle[y][x],paddyColPara)
             colSource_soil[y][x] = source * soil_ratio
             colSource_surface[y][x] = source * runoff_ratio
     # 污染源计算，获得solPSource，sedPSource两个DF
@@ -464,8 +471,12 @@ def oneMonthProcess(paraDict,month,preMonthResult):
             for x in range(0, Y):
                 runoff = runoff_generate[y][x]
                 soil = runoff_soil_generate[y][x]
-                runoff_ratio = runoff / (runoff + soil)
-                soil_ratio = soil / (runoff + soil)
+                if runoff + soil == 0:
+                    runoff_ratio = 0
+                    soil_ratio = 0
+                else:
+                    runoff_ratio = runoff / (runoff + soil)
+                    soil_ratio = soil / (runoff + soil)
                 if initDF[y][x] !=0 or landuseDF[y][x] == waterCode or landuseDF[y][x] == buildingCode or runoff_flow[y][x]==0 or rusle[y][x]==0:
                     continue
                 else:
@@ -476,6 +487,8 @@ def oneMonthProcess(paraDict,month,preMonthResult):
                     solPSource = P_solution[y][x] * runoff_flow[y][x] * 0.09 / (paraDict['SOL_BD'] * 10 * 0.5)
                     sedPSource = 0.0001 * rusle[y][x] * conc_sedP * EPsed
                     colPSource = 0.0001 * (colSource_surface[y][x]+colSource_soil[y][x]) * conc_sedP * EPsed
+
+
                     solPSource_soil[y][x] = solPSource * soil_ratio
                     solPSource_surface[y][x] = solPSource * runoff_ratio
 
@@ -488,14 +501,22 @@ def oneMonthProcess(paraDict,month,preMonthResult):
     solPFlow_surface = copy.deepcopy(solPSource_surface)
     colPFlow_surface = copy.deepcopy(colPSource_surface)
     sedPFlow_surface = copy.deepcopy(sedPSource_surface)
-    colFlow_surface = copy.deepcopy(colPSource_surface)
-    sedFlow = copy.deepcopy(rusle)
+    # colFlow_surface = copy.deepcopy(colPSource_surface)
+    # sedFlow = copy.deepcopy(rusle)
     solPFlow_soil = copy.deepcopy(solPSource_soil)
     colPFlow_soil = copy.deepcopy(colPSource_soil)
     sedPFlow_soil = copy.deepcopy(sedPSource_soil)
-    colFlow_soil = copy.deepcopy(colPSource_soil)
+    # colFlow_soil = copy.deepcopy(colPSource_soil)
 
     def flow(x,y):
+        runoff = runoff_generate[y][x]
+        soil = runoff_soil_generate[y][x]
+        if runoff + soil == 0:
+            runoff_ratio = 0
+            soil_ratio = 0
+        else:
+            runoff_ratio = runoff / (runoff + soil)
+            soil_ratio = soil / (runoff + soil)
         xyCode = fillZero(x, y)
         if not slopeDF[y][x] > 0:
             slopeDF[y][x] = 0.01
@@ -508,75 +529,100 @@ def oneMonthProcess(paraDict,month,preMonthResult):
                 solPFlow_surface[y][x] += preRes['solPFlow_surface']
                 colPFlow_surface[y][x] += preRes['colPFlow_surface']
                 sedPFlow_surface[y][x] += preRes['sedPFlow_surface']
-                colFlow_surface[y][x] += preRes['colFlow_surface']
-                sedFlow[y][x] += preRes['sedFlow']
+                # colFlow_surface[y][x] += preRes['colFlow_surface']
+                # sedFlow[y][x] += preRes['sedFlow']
                 solPFlow_soil[y][x] += preRes['solPFlow_soil']
                 colPFlow_soil[y][x] += preRes['colPFlow_soil']
                 sedPFlow_soil[y][x] += preRes['sedPFlow_soil']
-                colFlow_soil[y][x] += preRes['colFlow_soil']
+                # colFlow_soil[y][x] += preRes['colFlow_soil']
+                if runoff_flow[y][x] == 0:
+                    solP_loss = 1
+                    colP_loss = 1
+                    sedP_loss = 1
+                else:
+                    solP_loss = paraDict['INTER_RESP_PARA_1'] * (C_factorDF[y][x] / 10000) + \
+                                              paraDict['INTER_RESP_PARA_2'] * (runoff_flow[y][x] ** paraDict['INTER_RESP_PARA_3']) + \
+                                               paraDict['INTER_RESP_PARA_4'] * (solPSource_surface[y][x]) + \
+                                              paraDict['INTER_RESP_PARA_5'] * (slopeDF[y][x])
+                    colP_loss = paraDict['INTER_COLP_PARA_1'] * (-C_factorDF[y][x] / 10000) + \
+                                              paraDict['INTER_COLP_PARA_2'] * (
+                                                          runoff_flow[y][x] ** paraDict['INTER_COLP_PARA_3']) + \
+                                              paraDict['INTER_COLP_PARA_4'] * (colPSource_surface[y][x]) + \
+                                              paraDict['INTER_COLP_PARA_5'] * (slopeDF[y][x])
+                    sedP_loss = paraDict['INTER_SEDP_PARA_1'] * (-C_factorDF[y][x] / 10000) + \
+                                              paraDict['INTER_SEDP_PARA_2'] * (
+                                                      runoff_flow[y][x] ** paraDict['INTER_SEDP_PARA_3']) + \
+                                              paraDict['INTER_SEDP_PARA_4'] * (sedPSource_surface[y][x]) + \
+                                              paraDict['INTER_SEDP_PARA_5'] * (slopeDF[y][x])
 
-
-                solPFlow_surface[y][x] *=  0.25 * (1 - paraDict['para_Q1_solP'] ** (-runoff_flow[y][x])
-                                                 + paraDict['para_C_solP'] ** (-C_factorDF[y][x] / 10000)
-                                                 + paraDict['para_S_solP'] ** (-slopeDF[y][x])
-                                                 + 1 - paraDict['para_lnconc_solP'] ** (-math.log(solPSource_surface[y][x]) if solPSource_surface[y][x] > 1 else 0))
-
-                colPFlow_surface[y][x] *= 0.25 * (1 - paraDict['para_Q1_col'] ** (-runoff_flow[y][x])
-                                        + paraDict['para_C_col'] ** (-C_factorDF[y][x])
-                                        + paraDict['para_S_col'] ** (-slopeDF[y][x])
-                                        + 1 - paraDict['para_lnconc_col'] ** (-math.log(colPFlow_surface[y][x]) if colPFlow_surface[y][x] > 1 else 0))
-
-                sedPFlow_surface[y][x] *= 0.25 * (1 - paraDict['para_Q1_sedP'] ** (-runoff_flow[y][x])
-                                        + paraDict['para_C_sedP'] ** (-C_factorDF[y][x])
-                                        + paraDict['para_S_sedP'] ** (-slopeDF[y][x])
-                                        + 1 - paraDict['para_lnconc_sedP'] ** (-math.log(sedPFlow_surface[y][x]) if sedPFlow_surface[y][x] > 1 else 0))
-
-                colFlow_surface[y][x] *= 0.25 * (1 - paraDict['para_Q1_col'] ** (-runoff_flow[y][x])
-                                        + paraDict['para_C_col'] ** (-C_factorDF[y][x])
-                                        + paraDict['para_S_col'] ** (-slopeDF[y][x])
-                                        + 1 - paraDict['para_lnconc_col'] ** (-math.log(colFlow_surface[y][x]) if colFlow_surface[y][x] > 1 else 0))
-
-
-                sedFlow[y][x] *= 0.25 * (1 - paraDict['para_Q1_sed'] ** (-runoff_flow[y][x])
-                                        + paraDict['para_C_sed'] ** (-C_factorDF[y][x])
-                                        + paraDict['para_S_sed'] ** (-slopeDF[y][x])
-                                        + 1 - paraDict['para_lnconc_sed'] ** (-math.log(sedFlow[y][x]) if sedFlow[y][x] > 1 else 0))
-
-                solPFlow_soil[y][x] *= 0.5 * (1 - paraDict['para_Q1_solP'] ** (-runoff_flow[y][x])
-                                                 + 1 - paraDict['para_lnconc_solP'] ** (-math.log(solPSource_soil[y][x]) if solPSource_soil[y][x] > 1 else 0))
-
-
-                colPFlow_soil[y][x] *=  0.5 * (1 - paraDict['para_Q1_col'] ** (-runoff_flow[y][x])
-                                        + 1 - paraDict['para_lnconc_col'] ** (-math.log(colPFlow_soil[y][x]) if colPFlow_soil[y][x] > 1 else 0))
-
-                sedPFlow_soil[y][x] *= 0.5 * (1 - paraDict['para_Q1_sedP'] ** (-runoff_flow[y][x])
-                                        + 1 - paraDict['para_lnconc_sedP'] ** (-math.log(sedPFlow_soil[y][x]) if sedPFlow_soil[y][x] > 1 else 0))
-
-                colFlow_soil[y][x] *= 0.5 * (1 - paraDict['para_Q1_col'] ** (-runoff_flow[y][x])
-                                        + 1 - paraDict['para_lnconc_col'] ** (-math.log(colFlow_soil[y][x]) if colFlow_soil[y][x] > 1 else 0))
+                solPFlow_surface[y][x] *= solP_loss * runoff_ratio
+                colPFlow_surface[y][x] *= colP_loss * runoff_ratio
+                sedPFlow_surface[y][x] *= sedP_loss * runoff_ratio
+                solPFlow_soil[y][x] *= solP_loss * soil_ratio
+                colPFlow_soil[y][x] *= colP_loss * soil_ratio
+                sedPFlow_soil[y][x] *= sedP_loss * soil_ratio
+                #
+                #
+                # solPFlow_surface[y][x] *=  0.25 * (1 - paraDict['para_Q1_solP'] ** (-runoff_flow[y][x])
+                #                                  + paraDict['para_C_solP'] ** (-C_factorDF[y][x] / 10000)
+                #                                  + paraDict['para_S_solP'] ** (-slopeDF[y][x])
+                #                                  + 1 - paraDict['para_lnconc_solP'] ** (-math.log(solPSource_surface[y][x]) if solPSource_surface[y][x] > 1 else 0))
+                # colPFlow_surface[y][x] *= 0.25 * (1 - paraDict['para_Q1_col'] ** (-runoff_flow[y][x])
+                #                         + paraDict['para_C_col'] ** (-C_factorDF[y][x])
+                #                         + paraDict['para_S_col'] ** (-slopeDF[y][x])
+                #                         + 1 - paraDict['para_lnconc_col'] ** (-math.log(colPFlow_surface[y][x]) if colPFlow_surface[y][x] > 1 else 0))
+                #
+                # sedPFlow_surface[y][x] *= 0.25 * (1 - paraDict['para_Q1_sedP'] ** (-runoff_flow[y][x])
+                #                         + paraDict['para_C_sedP'] ** (-C_factorDF[y][x])
+                #                         + paraDict['para_S_sedP'] ** (-slopeDF[y][x])
+                #                         + 1 - paraDict['para_lnconc_sedP'] ** (-math.log(sedPFlow_surface[y][x]) if sedPFlow_surface[y][x] > 1 else 0))
+                #
+                # colFlow_surface[y][x] *= 0.25 * (1 - paraDict['para_Q1_col'] ** (-runoff_flow[y][x])
+                #                         + paraDict['para_C_col'] ** (-C_factorDF[y][x])
+                #                         + paraDict['para_S_col'] ** (-slopeDF[y][x])
+                #                         + 1 - paraDict['para_lnconc_col'] ** (-math.log(colFlow_surface[y][x]) if colFlow_surface[y][x] > 1 else 0))
+                #
+                #
+                # sedFlow[y][x] *= 0.25 * (1 - paraDict['para_Q1_sed'] ** (-runoff_flow[y][x])
+                #                         + paraDict['para_C_sed'] ** (-C_factorDF[y][x])
+                #                         + paraDict['para_S_sed'] ** (-slopeDF[y][x])
+                #                         + 1 - paraDict['para_lnconc_sed'] ** (-math.log(sedFlow[y][x]) if sedFlow[y][x] > 1 else 0))
+                #
+                # solPFlow_soil[y][x] *= 0.5 * (1 - paraDict['para_Q1_solP'] ** (-runoff_flow[y][x])
+                #                                  + 1 - paraDict['para_lnconc_solP'] ** (-math.log(solPSource_soil[y][x]) if solPSource_soil[y][x] > 1 else 0))
+                #
+                #
+                # colPFlow_soil[y][x] *=  0.5 * (1 - paraDict['para_Q1_col'] ** (-runoff_flow[y][x])
+                #                         + 1 - paraDict['para_lnconc_col'] ** (-math.log(colPFlow_soil[y][x]) if colPFlow_soil[y][x] > 1 else 0))
+                #
+                # sedPFlow_soil[y][x] *= 0.5 * (1 - paraDict['para_Q1_sedP'] ** (-runoff_flow[y][x])
+                #                         + 1 - paraDict['para_lnconc_sedP'] ** (-math.log(sedPFlow_soil[y][x]) if sedPFlow_soil[y][x] > 1 else 0))
+                #
+                # colFlow_soil[y][x] *= 0.5 * (1 - paraDict['para_Q1_col'] ** (-runoff_flow[y][x])
+                #                         + 1 - paraDict['para_lnconc_col'] ** (-math.log(colFlow_soil[y][x]) if colFlow_soil[y][x] > 1 else 0))
 
             return {
                 'solPFlow_surface': solPFlow_surface[y][x],
                 'colPFlow_surface': colPFlow_surface[y][x],
                 'sedPFlow_surface': sedPFlow_surface[y][x],
-                'colFlow_surface': colFlow_surface[y][x],
-                'sedFlow': sedFlow[y][x],
+                # 'colFlow_surface': colFlow_surface[y][x],
+                # 'sedFlow': sedFlow[y][x],
                 'solPFlow_soil': solPFlow_soil[y][x],
                 'colPFlow_soil': colPFlow_soil[y][x],
                 'sedPFlow_soil': sedPFlow_soil[y][x],
-                'colFlow_soil': colFlow_soil[y][x],
+                # 'colFlow_soil': colFlow_soil[y][x],
             }
         else:
             return {
                 'solPFlow_surface':solPFlow_surface[y][x],
                 'colPFlow_surface':colPFlow_surface[y][x],
                 'sedPFlow_surface':sedPFlow_surface[y][x],
-                'colFlow_surface':colFlow_surface[y][x],
-                'sedFlow':sedFlow[y][x],
+                # 'colFlow_surface':colFlow_surface[y][x],
+                # 'sedFlow':sedFlow[y][x],
                 'solPFlow_soil':solPFlow_soil[y][x],
                 'colPFlow_soil':colPFlow_soil[y][x],
                 'sedPFlow_soil':sedPFlow_soil[y][x],
-                'colFlow_soil':colFlow_soil[y][x],
+                # 'colFlow_soil':colFlow_soil[y][x],
             }
     flow(44,209)
     # pd.DataFrame(sedPSource_surface).to_csv(r'C:\Users\yezouhua\Desktop\master\webPlatform\nineMonth\modelResult\sedPSource.csv')
@@ -617,12 +663,9 @@ def oneMonthProcess(paraDict,month,preMonthResult):
         'solPFlow_surface':solPFlow_surface,
         'colPFlow_surface':colPFlow_surface,
         'sedPFlow_surface':sedPFlow_surface,
-        'colFlow_surface':colFlow_surface,
-        'sedFlow':sedFlow,
         'solPFlow_soil':solPFlow_soil,
         'colPFlow_soil':colPFlow_soil,
         'sedPFlow_soil':sedPFlow_soil,
-        'colFlow_soil':colFlow_soil,
 
 
     }
@@ -676,7 +719,8 @@ def trans(paraDict,x,y):
     colPlist = []
     colList = []
     TPList = []
-    for i in range(1,7):
+    for i in range(1,12):
+        rainfall = monthRainfall[i - 1]['rainfall']
         if i == 1:
             res = oneMonthProcess(paraDict, i,{})
             trans = res['runoff_flow'][184][39] * 1000 * 0.09
@@ -686,97 +730,90 @@ def trans(paraDict,x,y):
 
             resArr['runoff']['surface'].append(float(res['runoff_flow'][x][y]))
             resArr['runoff']['soil'].append(float(res['runoff_soil_flow'][x][y]))
-            resArr['runoff']['underground'].append(float(res['runoff_groundwater_flow'][x][y]))
-            resArr['runoff']['total'].append(float(res['runoff_flow'][x][y])+float(res['runoff_soil_flow'][x][y])+float(res['runoff_groundwater_flow'][x][y]))
-
+            resArr['runoff']['total'].append(float(res['runoff_flow'][x][y])+float(res['runoff_soil_flow'][x][y]))
             resArr['solP']['surface'].append(float(res['solPFlow_surface'][x][y]) / trans)
             resArr['solP']['soil'].append(float(res['solPFlow_soil'][x][y]) / trans)
-            resArr['solP']['underground'].append(float(res['solPFlow_underground'][x][y]) / trans)
-            resArr['solP']['total'].append(float(res['solPFlow_surface'][x][y]+res['solPFlow_soil'][x][y]+res['solPFlow_underground'][x][y]) / trans)
+            resArr['solP']['total'].append(float(res['solPFlow_surface'][x][y]+res['solPFlow_soil'][x][y]) / trans)
             resArr['sedP']['surface'].append(float(res['sedPFlow_surface'][x][y]) / trans)
             resArr['sedP']['soil'].append(float(res['sedPFlow_soil'][x][y]) / trans)
-            resArr['sedP']['underground'].append(float(res['sedPFlow_underground'][x][y]) / trans)
-            resArr['sedP']['total'].append(float(res['sedPFlow_surface'][x][y]+res['sedPFlow_soil'][x][y]+res['sedPFlow_underground'][x][y]) / trans)
+            resArr['sedP']['total'].append(float(res['sedPFlow_surface'][x][y]+res['sedPFlow_soil'][x][y]) / trans)
             resArr['colP']['surface'].append(float(res['colPFlow_surface'][x][y]) / trans)
             resArr['colP']['soil'].append(float(res['colPFlow_soil'][x][y]) / trans)
-            resArr['colP']['underground'].append(float(res['colPFlow_underground'][x][y]) / trans)
-            resArr['colP']['total'].append(float(res['colPFlow_surface'][x][y]+res['colPFlow_soil'][x][y]+res['colPFlow_underground'][x][y]) / trans)
-
-            resArr['colP_amount']['surface'].append(float(res['colPFlow_surface'][x][y])  * float(res['runoff_flow'][x][y]) / trans)
-            resArr['colP_amount']['soil'].append(float(res['colPFlow_soil'][x][y]) * float(res['runoff_soil_flow'][x][y]) / trans)
-            resArr['colP_amount']['underground'].append(float(res['colPFlow_underground'][x][y]) * float(res['runoff_groundwater_flow'][x][y]) / trans)
-            resArr['colP_amount']['total'].append(
-                float(res['colPFlow_surface'][x][y] * res['runoff_flow'][x][y] + res['colPFlow_soil'][x][y] *res['runoff_soil_flow'][x][y]
-                      + res['colPFlow_underground'][x][y] * res['runoff_groundwater_flow'][x][y]) / trans)
+            resArr['colP']['total'].append(float(res['colPFlow_surface'][x][y]+res['colPFlow_soil'][x][y]) / trans)
+            #
+            # resArr['colP_amount']['surface'].append(float(res['colPFlow_surface'][x][y])  * float(res['runoff_flow'][x][y]) / trans)
+            # resArr['colP_amount']['soil'].append(float(res['colPFlow_soil'][x][y]) * float(res['runoff_soil_flow'][x][y]) / trans)
+            # resArr['colP_amount']['underground'].append(float(res['colPFlow_underground'][x][y]) * float(res['runoff_groundwater_flow'][x][y]) / trans)
+            # resArr['colP_amount']['total'].append(
+            #     float(res['colPFlow_surface'][x][y] * res['runoff_flow'][x][y] + res['colPFlow_soil'][x][y] *res['runoff_soil_flow'][x][y]
+            #           + res['colPFlow_underground'][x][y] * res['runoff_groundwater_flow'][x][y]) / trans)
 
             resArr['TP']['surface'].append(float(res['solPFlow_surface'][x][y]+res['sedPFlow_surface'][x][y]+res['colPFlow_surface'][x][y]) / trans)
             resArr['TP']['soil'].append(float(res['solPFlow_soil'][x][y]+res['sedPFlow_soil'][x][y]+res['colPFlow_soil'][x][y]) / trans)
-            resArr['TP']['underground'].append(float(res['solPFlow_underground'][x][y]+res['sedPFlow_underground'][x][y]+res['colPFlow_underground'][x][y]) / trans)
-            resArr['TP']['total'].append(float(res['colPFlow_surface'][x][y]+res['colPFlow_soil'][x][y]+res['colPFlow_underground'][x][y]+
-                                         res['solPFlow_soil'][x][y] + res['sedPFlow_soil'][x][y] + res['colPFlow_soil'][x][y]+
-                                         res['solPFlow_underground'][x][y] + res['sedPFlow_underground'][x][y] +res['colPFlow_underground'][x][y]) / trans
+            resArr['TP']['total'].append(float(res['solPFlow_surface'][x][y]+res['sedPFlow_surface'][x][y]+res['colPFlow_surface'][x][y]+
+                                               res['solPFlow_soil'][x][y]+res['sedPFlow_soil'][x][y]+res['colPFlow_soil'][x][y]) / trans
                                          )
-            resArr['sed']['surface'].append(float(res['sedFlow'][x][y]) * trans2)
-            resArr['sed']['total'].append(float(res['sedFlow'][x][y]) * trans2)
-            resArr['col']['surface'].append(float(res['colFlow_surface'][x][y]) * trans2)
-            resArr['col']['soil'].append(float(res['colFlow_soil'][x][y]) * trans2)
-            resArr['col']['underground'].append(float(res['colFlow_underground'][x][y]) * trans2)
-            resArr['col']['total'].append(float(res['colFlow_surface'][x][y]+res['colFlow_soil'][x][y]+res['colFlow_underground'][x][y]) * trans2)
+            # resArr['sed']['surface'].append(float(res['sedFlow'][x][y]) * trans2)
+            # resArr['sed']['total'].append(float(res['sedFlow'][x][y]) * trans2)
+            # resArr['col']['surface'].append(float(res['colFlow_surface'][x][y]) * trans2)
+            # resArr['col']['soil'].append(float(res['colFlow_soil'][x][y]) * trans2)
+            # resArr['col']['underground'].append(float(res['colFlow_underground'][x][y]) * trans2)
+            # resArr['col']['total'].append(float(res['colFlow_surface'][x][y]+res['colFlow_soil'][x][y]+res['colFlow_underground'][x][y]) * trans2)
+
         else:
             res = oneMonthProcess(paraDict,i,res)
-            trans = res['runoff_flow'][184][39] * 1000 * 0.09
-            trans2 =  0.09 * 1000000 / res['runoff_flow'][184][39]
-            resArr['runoff']['surface'].append(float(res['runoff_flow'][x][y]))
-            resArr['runoff']['soil'].append(float(res['runoff_soil_flow'][x][y]))
-            resArr['runoff']['underground'].append(float(res['runoff_groundwater_flow'][x][y]))
-            resArr['runoff']['total'].append(float(res['runoff_flow'][x][y])+float(res['runoff_soil_flow'][x][y])+float(res['runoff_groundwater_flow'][x][y]))
-            resArr['solP']['surface'].append(float(res['solPFlow_surface'][x][y]) / trans)
-            resArr['solP']['soil'].append(float(res['solPFlow_soil'][x][y]) / trans)
-            resArr['solP']['underground'].append(float(res['solPFlow_underground'][x][y]) / trans)
-            resArr['solP']['total'].append(
-                float(res['solPFlow_surface'][x][y] + res['solPFlow_soil'][x][y] + res['solPFlow_underground'][x][y]) / trans)
-            resArr['sedP']['surface'].append(float(res['sedPFlow_surface'][x][y]) / trans)
-            resArr['sedP']['soil'].append(float(res['sedPFlow_soil'][x][y]) / trans)
-            resArr['sedP']['underground'].append(float(res['sedPFlow_underground'][x][y]) / trans)
-            resArr['sedP']['total'].append(
-                float(res['sedPFlow_surface'][x][y] + res['sedPFlow_soil'][x][y] + res['sedPFlow_underground'][x][y]) / trans)
-            resArr['colP']['surface'].append(float(res['colPFlow_surface'][x][y]) / trans)
-            resArr['colP']['soil'].append(float(res['colPFlow_soil'][x][y]) / trans)
-            resArr['colP']['underground'].append(float(res['colPFlow_underground'][x][y]) / trans)
+            print(res['runoff_flow'][x][y],res['sedPFlow_surface'][x][y])
+            if res['runoff_flow'][x][y] == 0:
+                resArr['runoff']['surface'].append(0)
+                resArr['runoff']['soil'].append(0)
+                resArr['runoff']['total'].append(0)
+                resArr['solP']['surface'].append(0)
+                resArr['solP']['soil'].append(0)
+                resArr['solP']['total'].append(0)
+                resArr['sedP']['surface'].append(0)
+                resArr['sedP']['soil'].append(0)
+                resArr['sedP']['total'].append(0)
+                resArr['colP']['surface'].append(0)
+                resArr['colP']['soil'].append(0)
+                resArr['colP']['total'].append(0)
+            else:
+                trans = res['runoff_flow'][184][39] * 1000 * 0.09
+                trans2 = 0.09 * 1000000 / res['runoff_flow'][184][39]
+                resArr['runoff']['surface'].append(float(res['runoff_flow'][x][y]))
+                resArr['runoff']['soil'].append(float(res['runoff_soil_flow'][x][y]))
+                resArr['runoff']['total'].append(float(res['runoff_flow'][x][y]) + float(res['runoff_soil_flow'][x][y]))
+                resArr['solP']['surface'].append(float(res['solPFlow_surface'][x][y]) / trans)
+                resArr['solP']['soil'].append(float(res['solPFlow_soil'][x][y]) / trans)
+                resArr['solP']['total'].append(float(res['solPFlow_surface'][x][y] + res['solPFlow_soil'][x][y]) / trans)
+                resArr['sedP']['surface'].append(float(res['sedPFlow_surface'][x][y]) / trans)
+                resArr['sedP']['soil'].append(float(res['sedPFlow_soil'][x][y]) / trans)
+                resArr['sedP']['total'].append(float(res['sedPFlow_surface'][x][y] + res['sedPFlow_soil'][x][y]) / trans)
+                resArr['colP']['surface'].append(float(res['colPFlow_surface'][x][y]) / trans)
+                resArr['colP']['soil'].append(float(res['colPFlow_soil'][x][y]) / trans)
+                resArr['colP']['total'].append(float(res['colPFlow_surface'][x][y] + res['colPFlow_soil'][x][y]) / trans)
 
-            resArr['colP_amount']['surface'].append(
-                float(res['colPFlow_surface'][x][y]) * float(res['runoff_flow'][x][y]) / trans)
-            resArr['colP_amount']['soil'].append(
-                float(res['colPFlow_soil'][x][y]) * float(res['runoff_soil_flow'][x][y]) / trans)
-            resArr['colP_amount']['underground'].append(
-                float(res['colPFlow_underground'][x][y]) * float(res['runoff_groundwater_flow'][x][y]) / trans)
-            resArr['colP_amount']['total'].append(
-                float(res['colPFlow_surface'][x][y] * res['runoff_flow'][x][y] + res['colPFlow_soil'][x][y] *
-                      res['runoff_soil_flow'][x][y]
-                      + res['colPFlow_underground'][x][y] * res['runoff_groundwater_flow'][x][y]) / trans)
+            #
+            # resArr['colP_amount']['surface'].append(float(res['colPFlow_surface'][x][y])  * float(res['runoff_flow'][x][y]) / trans)
+            # resArr['colP_amount']['soil'].append(float(res['colPFlow_soil'][x][y]) * float(res['runoff_soil_flow'][x][y]) / trans)
+            # resArr['colP_amount']['underground'].append(float(res['colPFlow_underground'][x][y]) * float(res['runoff_groundwater_flow'][x][y]) / trans)
+            # resArr['colP_amount']['total'].append(
+            #     float(res['colPFlow_surface'][x][y] * res['runoff_flow'][x][y] + res['colPFlow_soil'][x][y] *res['runoff_soil_flow'][x][y]
+            #           + res['colPFlow_underground'][x][y] * res['runoff_groundwater_flow'][x][y]) / trans)
 
             resArr['TP']['surface'].append(
                 float(res['solPFlow_surface'][x][y] + res['sedPFlow_surface'][x][y] + res['colPFlow_surface'][x][y]) / trans)
             resArr['TP']['soil'].append(
                 float(res['solPFlow_soil'][x][y] + res['sedPFlow_soil'][x][y] + res['colPFlow_soil'][x][y]) / trans)
-            resArr['TP']['underground'].append(float(
-                res['solPFlow_underground'][x][y] + res['sedPFlow_underground'][x][y] + res['colPFlow_underground'][x][
-                    y]) / trans)
             resArr['TP']['total'].append(
-                float(res['colPFlow_surface'][x][y] + res['colPFlow_soil'][x][y] + res['colPFlow_underground'][x][y] +
-                      res['solPFlow_soil'][x][y] + res['sedPFlow_soil'][x][y] + res['colPFlow_soil'][x][y] +
-                      res['solPFlow_underground'][x][y] + res['sedPFlow_underground'][x][y] +
-                      res['colPFlow_underground'][x][y]) / trans
+                float(res['solPFlow_surface'][x][y] + res['sedPFlow_surface'][x][y] + res['colPFlow_surface'][x][y] +
+                      res['solPFlow_soil'][x][y] + res['sedPFlow_soil'][x][y] + res['colPFlow_soil'][x][y]) / trans
                 )
-            resArr['sed']['surface'].append(float(res['sedFlow'][x][y]) * trans2)
-            resArr['sed']['total'].append(float(res['sedFlow'][x][y]) * trans2)
-            resArr['col']['surface'].append(float(res['colFlow_surface'][x][y]) * trans2)
-            resArr['col']['soil'].append(float(res['colFlow_soil'][x][y]) * trans2)
-            resArr['col']['underground'].append(float(res['colFlow_underground'][x][y]) * trans2)
-            resArr['col']['total'].append(
-                float(res['colFlow_surface'][x][y] + res['colFlow_soil'][x][y] + res['colFlow_underground'][x][y]) * trans2)
-
-
+            # resArr['sed']['surface'].append(float(res['sedFlow'][x][y]) * trans2)
+            # resArr['sed']['total'].append(float(res['sedFlow'][x][y]) * trans2)
+            # resArr['col']['surface'].append(float(res['colFlow_surface'][x][y]) * trans2)
+            # resArr['col']['soil'].append(float(res['colFlow_soil'][x][y]) * trans2)
+            # resArr['col']['underground'].append(float(res['colFlow_underground'][x][y]) * trans2)
+            # resArr['col']['total'].append(float(res['colFlow_surface'][x][y]+res['colFlow_soil'][x][y]+res['colFlow_underground'][x][y]) * trans2)
     return resArr
 
 # 定义几个率定变量
@@ -834,7 +871,6 @@ def RE(obs, pre,key):
     return -re / len(obs)
 
 def process(
-
         PSP,RSDIN,SOL_BD,SOL_CBN,CMN,CLAY,SOL_AWC,RSDCO,
         PHOSKD,V_SET,D50,AI2,RHOQ,BC4,RS5,RS2,INTER_SED_PARA_1,
         INTER_SED_PARA_2,INTER_SED_PARA_3,INTER_SED_PARA_4,
@@ -846,7 +882,8 @@ def process(
         INTER_COLP_PARA_5,INTER_RESP_PARA_1,INTER_RESP_PARA_2,
         INTER_RESP_PARA_3,INTER_RESP_PARA_4,INTER_RESP_PARA_5,
         R0,R1,Q_SURF_K1,Q_SURF_K2,Q_SOIL_K1,PARA_PH0,PARA_PH1,
-        PARA_PH2,PARA_PH3,PARA_PH4,CN_sloping,CN_forest,CN_paddy
+        PARA_PH2,PARA_PH3,PARA_PH4,CN_sloping,CN_forest,CN_paddy,
+        FMINN,FNH3N,FORGN,FMINP,FORGP
             ):
     global objective_r2_sedP,objective_nse_sedP,\
     objective_r2_solP,objective_nse_solP,objective_r2_sed,\
@@ -873,7 +910,8 @@ def process(
         INTER_COLP_PARA_5,INTER_RESP_PARA_1,INTER_RESP_PARA_2, \
         INTER_RESP_PARA_3,INTER_RESP_PARA_4,INTER_RESP_PARA_5, \
         R0,R1,Q_SURF_K1,Q_SURF_K2,Q_SOIL_K1,PARA_PH0,PARA_PH1, \
-        PARA_PH2,PARA_PH3,PARA_PH4,CN_sloping,CN_forest,CN_paddy in zip(
+        PARA_PH2,PARA_PH3,PARA_PH4,CN_sloping,CN_forest,CN_paddy,\
+            FMINN,FNH3N,FORGN,FMINP,FORGP in zip(
         PSP, RSDIN, SOL_BD, SOL_CBN, CMN, CLAY, SOL_AWC, RSDCO,
         PHOSKD, V_SET, D50, AI2, RHOQ, BC4, RS5, RS2, INTER_SED_PARA_1,
         INTER_SED_PARA_2, INTER_SED_PARA_3, INTER_SED_PARA_4,
@@ -885,7 +923,8 @@ def process(
         INTER_COLP_PARA_5, INTER_RESP_PARA_1, INTER_RESP_PARA_2,
         INTER_RESP_PARA_3, INTER_RESP_PARA_4, INTER_RESP_PARA_5,
         R0, R1, Q_SURF_K1, Q_SURF_K2, Q_SOIL_K1, PARA_PH0, PARA_PH1,
-        PARA_PH2, PARA_PH3, PARA_PH4, CN_sloping,CN_forest,CN_paddy
+        PARA_PH2, PARA_PH3, PARA_PH4, CN_sloping,CN_forest,CN_paddy,
+        FMINN,FNH3N,FORGN,FMINP,FORGP
     ):
         time += 1
         # 一组参数
@@ -943,7 +982,12 @@ def process(
             "PARA_PH4":PARA_PH4,
             "CN_sloping":CN_sloping,
             "CN_forest":CN_forest,
-            "CN_paddy":CN_paddy
+            "CN_paddy":CN_paddy,
+            "FMINN":FMINN,
+            "FNH3N":FNH3N,
+            "FORGN":FORGN,
+            "FMINP":FMINP,
+            "FORGP":FORGP
         }
         paraRes.append(paraDict)
         # 关键传输函数，返回一整次模拟的所有结果
@@ -963,7 +1007,6 @@ def process(
         # objective[key]['r2'].append(r2(newColPArr, res['colP_amount']['total']))
         # objective[key]['nse'].append(NSE(newColPArr, res['colP_amount']['total']))
         # objective[key]['re'].append(RE(newColPArr, res['colP_amount']['total']))
-
         for key in celibratedTarget:
             objective[key]['r2'].append(r2(celibratedValue[key], res[key]['total'],key))
             objective[key]['nse'].append(NSE(celibratedValue[key], res[key]['total'],key))
@@ -1014,7 +1057,7 @@ celibratedTimes = 0
 class MyProblem(Problem):
     def __init__(self):
         super().__init__(
-            n_var=54,
+            n_var=59,
             n_obj=len(celibratedTarget)*3,
             xl=anp.array(
                 [
@@ -1034,31 +1077,31 @@ class MyProblem(Problem):
                     0.01,
                     0.001,
                     0.001,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
+                    -5,
                     0,
                     100,
                     0,
@@ -1072,63 +1115,73 @@ class MyProblem(Problem):
                     50, # CN_sloping
                     50, # CN_forest
                     50, # CN_paddy
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
 
                 ]),  # 变量下界
             xu=anp.array(
                 [0.7,
-      10000,
-      2.5,
-      10,
-      0.003,
-      100,
-      1,
-      0.1,
-      200,
-      100,
-      100,
-      0.02,
-      0.5,
-      0.7,
-      0.01,
-      0.1,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      2,
-      100,
-      300,
-      300,
-      300,
-      300,
-      20000,
-      10000,
-      0,
-      1000,
-      0,
-      100, # CN_sloping
-      100, # CN_forest
-      100, # CN_paddy
+                  10000,
+                  2.5,
+                  10,
+                  0.003,
+                  100,
+                  1,
+                  0.1,
+                  200,
+                  100,
+                  100,
+                  0.02,
+                  0.5,
+                  0.7,
+                  0.01,
+                  0.1,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  100,
+                  300,
+                  300,
+                  300,
+                  300,
+                  20000,
+                  10000,
+                  0,
+                  1000,
+                  0,
+                  100, # CN_sloping
+                  100, # CN_forest
+                  100, # CN_paddy
+                 0.5,
+                 0.5,
+                 0.5,
+                 0.5,
+                 0.5,
       ]),  # 变量上界
     )
     def _evaluate(self, x, out, *args, **kwargs):
@@ -1140,7 +1193,8 @@ class MyProblem(Problem):
                      x[:,32],x[:, 33],x[:,34],x[:, 35],x[:,36],x[:,37],x[:, 38],x[:,39],
                      x[:,40],x[:,41],x[:, 42],x[:,43],
                      x[:, 44], x[:, 45], x[:, 46], x[:, 47], x[:, 48],
-                     x[:, 49], x[:, 50],x[:, 51], x[:, 52],x[:, 53]
+                     x[:, 49], x[:, 50],x[:, 51], x[:, 52],x[:, 53],
+                     x[:, 54], x[:, 55], x[:, 56], x[:, 57], x[:, 58],
                    )
         path = projectFile + r'\modelResult\celibrateJson.json'
         path2 = projectFile + r'\modelResult\r2_nse.json'

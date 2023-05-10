@@ -353,7 +353,6 @@ try:
         S_factor = pd.read_csv(filePath + r'\database\S_factor_10000times.csv',index_col=0).values
         P_factor = pd.read_csv(filePath + r'\database\P_factor_10000times.csv',index_col=0).values
 
-
         X1 = len(K_factor)
         X2 = len(C_factor)
         X3 = len(L_factor)
@@ -382,6 +381,7 @@ try:
                         if k > 0 and k < 10000:
                             oneMonthRusleSum += r*k*c*l*s
                             oneMonthRusleDf[x][y] = r*k*c*l*s
+
                         else:
                             oneMonthRusleDf[x][y] = -1
                 if not os.path.exists(r"{}\rusle".format(filePath)):
