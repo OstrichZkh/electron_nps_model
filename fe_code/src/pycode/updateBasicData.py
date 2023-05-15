@@ -40,8 +40,6 @@ def load_img_to_array(img_file_path):
         #  一个通道转成一个数组（5888,5888）
         arr = srcband.ReadAsArray()
     return arr
-
-
 def cellaround(x, y, data):
     xaround = np.zeros((8, 1))
     xaround[0] = data[x + 1, y]  # 右
@@ -274,8 +272,26 @@ try:
                     luDict[str(code)] += 1
                 else:
                     luDict[str(code)] = 1
-        projInfo = json.load(open(jsonPath))
         print(json.dumps(luDict))
+    elif type == 'K_cal':
+        sourcePath = filePath + r'\database\soiltype.tif'
+        data2 = load_img_to_array(sourcePath)
+        output2 = pd.DataFrame(data2)
+        output2.to_csv(filePath + r'\database\soiltype.csv')
+        luDF = pd.read_csv(filePath + r'\database\soiltype.csv', index_col=0).values
+        res = 0
+        luDict = {}
+        for x in range(0, len(luDF)):
+            for y in range(0, len(luDF[0])):
+                if luDF[x][y] > -1000:
+                    res += 1
+                code = luDF[x][y]
+                if str(code) in luDict:
+                    luDict[str(code)] += 1
+                else:
+                    luDict[str(code)] = 1
+
+        projInfo = json.load(open(jsonPath))
         with open(jsonPath, "r", encoding="utf-8") as f:
             infos = json.load(f)
         targetInfo = {}
@@ -286,15 +302,13 @@ try:
         for x in range(0, len(K_factor_DF)):
             for y in range(0, len(K_factor_DF[0])):
                 code = K_factor_DF[x][y]
-                if code >0 and code < 20:
+                if code > 0 and code < 20:
                     for c in targetInfo['soiltype']['code']:
                         if code == c['code']:
-                            K_factor_DF[x][y] = c['kValue']*10000
+                            K_factor_DF[x][y] = c['kValue'] * 10000
                 else:
                     K_factor_DF[x][y] = -1
-
         pd.DataFrame(K_factor_DF).to_csv(filePath + r'\database\K_factor_10000times.csv')
-
     elif type == 'DEM':
         sourcePath = filePath + r'\database\DEM.tif'
         data2 = load_img_to_array(sourcePath)

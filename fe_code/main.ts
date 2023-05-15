@@ -352,6 +352,8 @@ function createWindow() {
             msg: curProjectInfo
           })
         })
+
+
       } else if (payload.type == 'soiltype') {
         fs.copyFileSync(filePath, path.join(curProjectPath, 'database', 'soiltype.tif'))
         const py = spawn('python', [pyPath, 'soiltype', curProjectPath, path.join(__dirname, './projectInfo.json')])
@@ -362,6 +364,9 @@ function createWindow() {
               msg: 'error'
             })
           }
+          console.log(dict.toString())
+          console.log(JSON.parse(dict.toString()))
+
           curProjectInfo.soiltype.state = true
           curProjectInfo.soiltype.counts = JSON.parse(dict.toString())
           updataStatusWithEntireInfo(curProjectInfo)
@@ -370,8 +375,9 @@ function createWindow() {
             msg: curProjectInfo
           })
         })
+        const kCalPy = spawn('python', [pyPath, 'K_cal', curProjectPath, path.join(__dirname, './projectInfo.json')])
       } else if (payload.type == 'DEM') {
-        fs.copyFileSync(filePath, path.join(curProjectPath, 'database', 'soiltype.tif'))
+        fs.copyFileSync(filePath, path.join(curProjectPath, 'database', 'DEM.tif'))
         const py = spawn('python', [pyPath, 'DEM', curProjectPath, path.join(__dirname, './projectInfo.json')])
         py.stdout.on('data', function (dict) {
           if (dict.toString() == 'err') {

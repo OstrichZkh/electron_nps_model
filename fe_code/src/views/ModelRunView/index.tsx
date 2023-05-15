@@ -20,7 +20,10 @@ const ModelRunBox = styled.div`
 const ModelRunView = (props: IProps) => {
   let { curProjectInfo } = useSelector((state) => state.dataManagementReducer);
   // 检查率定数据情况
-  useEffect(() => {}, []);
+  useEffect(() => {
+    // 每10秒请求最新的率定信息
+    let timer = setInterval(() => {}, 10);
+  }, []);
   return (
     <ModelRunBox>
       <Title title="请选择率定目标" />
@@ -33,6 +36,9 @@ const ModelRunView = (props: IProps) => {
           />
         );
       })}
+      <Button type="primary" style={{ width: 120 }}>
+        运行模型
+      </Button>
     </ModelRunBox>
   );
 };
@@ -61,9 +67,7 @@ const titleReflect = {
 const CalibrateSelector = (props: KProps) => {
   const [messageApi, contextHolder] = message.useMessage();
   const [isModalOpen, setIsModalOpen] = useState(false);
-
   const dispatch = useDispatch();
-
   const onChange = (e: CheckboxChangeEvent) => {
     dispatch(
       updateStatusAsync([
