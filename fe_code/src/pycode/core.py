@@ -17,6 +17,8 @@ projectFile = r'E:\webplatform\asd'
 jsonPath = r'E:\webplatform\fe_code\projectInfo.json'
 projectName = projectFile.split('\\')[-1]
 fileList = os.listdir(projectFile+r'\observeData')
+# 清空率定数据
+os.remove(projectFile + r'\calibrateResult.json')
 # 施肥措施数据
 allProjectInfo = []
 with open(jsonPath,'r',encoding='utf-8') as fp:
@@ -556,6 +558,16 @@ def process(
                 "obs":celibratedValue[key],
                 "pre":res[key]['total']
             }
+        for k in resDict:
+            for key in resDict[k]:
+                target = resDict[k][key]
+                if isinstance(target,list):
+                    newTarget = []
+                    for val in target:
+                        newTarget.append(str(val))
+                else:
+                    newTarget = str(target)
+                resDict[k][key] = newTarget
         path = projectFile + r'\calibrateResult.json'
         if os.path.exists(path):
             with open(path, 'r') as load_f:

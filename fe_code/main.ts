@@ -2,6 +2,7 @@
 // const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 // const path = require("path");
 
+
 // // Keep a global reference of the window object, if you don't, the window will
 // // be closed automatically when the JavaScript object is garbage collected.
 // let mainWindow = null;
@@ -489,6 +490,23 @@ function createWindow() {
       })
     })
 
+  })
+  ipcMain.handle('requireCalibrateInfo', (e, payload) => {
+    return new Promise((resolve, reject) => {
+      let info = fs.readFileSync(path.join(curProjectPath, 'calibrateResult.json'))
+      if (info) {
+        console.log(JSON.parse(info));
+        resolve({
+          status: 200,
+          msg: JSON.parse(info)
+        })
+      } else {
+        reject({
+          status: 400,
+          msg: 'no such file.'
+        })
+      }
+    })
   })
 
 }

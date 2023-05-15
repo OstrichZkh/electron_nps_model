@@ -2,9 +2,11 @@ import React, { useEffect, useState, Fragment } from "react";
 import styled from "styled-components";
 import Title from "../../components/Title";
 import { useSelector, useDispatch } from "react-redux";
-import { Checkbox, Button, Upload, message, Modal } from "antd";
+import { Checkbox, Button, Upload, message, Modal, Select } from "antd";
 import type { CheckboxChangeEvent } from "antd/es/checkbox";
 import { updateStatusAsync } from "../../store/features/dataManagementSlice.ts";
+import * as echarts from "echarts";
+import { flushSync } from "react-dom";
 
 type IProps = {};
 type KProps = {
@@ -19,11 +21,111 @@ const ModelRunBox = styled.div`
 `;
 const ModelRunView = (props: IProps) => {
   let { curProjectInfo } = useSelector((state) => state.dataManagementReducer);
+  let [calibrateInfo, setCalibreateInfo]: [any, Function] = useState(null);
+  let [calibrateOptions, setCalibrateOptions]: [any, Function] = useState([]);
+  let [curInfo, setCurinfo]: [any, Function] = useState({});
+  let [echartsOptions, setEchartsOptions] = useState({});
   // 检查率定数据情况
   useEffect(() => {
+    // 首次进入，立马查询率定数据
+    setTimeout(() => {
+      (async () => {
+        let { status, msg: calibrateInfos } =
+          await window.electronAPI.requireCalibrateInfo();
+        let calibrateArr: any[] = [];
+        let cabOptions: any[] = [];
+
+        for (let key in calibrateInfos) {
+          calibrateArr.push({
+            ...calibrateInfos[key],
+            timeStamp: +key,
+          });
+        }
+        calibrateArr.sort((a, b) => {
+          return b.timeStamp - a.timeStamp;
+        });
+        calibrateArr.map((item, index) => {
+          cabOptions.push({
+            value: item["timeStamp"],
+            label: `第${calibrateArr.length - index}次`,
+          });
+        });
+        setCalibreateInfo(calibrateArr);
+        setCalibrateOptions(cabOptions);
+      })();
+    }, 0);
+
     // 每10秒请求最新的率定信息
-    let timer = setInterval(() => {}, 10);
+    let timer = setInterval(() => {}, 10 * 1000);
+    return () => {
+      clearInterval(timer);
+    };
   }, []);
+  useEffect(() => {
+    let newOptions: any = { ...echartsOptions };
+    Object.keys(curInfo).map((key, index) => {
+      if (key !== "timeStamp") {
+        let myChart = echarts.init(
+          document.querySelector(`.echarts-${key}`) as HTMLElement
+        );
+        window.onresize = function () {
+          myChart.resize();
+        };
+        let { r2, nse, re_, obs, pre } = curInfo[key];
+        let xaxis: number[] = [];
+        pre.forEach((itm, idx) => {
+          xaxis.push(idx);
+        });
+        let echartsOption = {
+          legend: {
+            data: ["观测值", "模拟值"],
+          },
+          xAxis: {
+            type: "category",
+            data: xaxis,
+          },
+          yAxis: {
+            type: "value",
+          },
+          title: {
+            text: key,
+          },
+          series: [
+            {
+              name: "观测值",
+              type: "line",
+              data: obs,
+            },
+            {
+              name: "模拟值",
+              type: "line",
+              data: pre,
+            },
+          ],
+        };
+
+        newOptions[key] = echartsOption;
+      }
+      setEchartsOptions(newOptions);
+    });
+  }, [curInfo]);
+  useEffect(() => {
+    console.log(curInfo, echartsOptions, 123);
+    Object.keys(echartsOptions).map((key, index) => {
+      if (key !== "timeStamp") {
+        console.log(`.echarts-${key}`);
+        let myChart = echarts.init(
+          document.querySelector(`.echarts-${key}`) as HTMLElement
+        );
+        myChart.clear();
+        myChart.setOption(echartsOptions[key]);
+      }
+    });
+  }, [JSON.stringify(echartsOptions)]);
+  const handleOpsChange = (e) => {
+    let curInfo_ = calibrateInfo.filter((item) => item.timeStamp == e)[0];
+    setCurinfo(curInfo_);
+  };
   return (
     <ModelRunBox>
       <Title title="请选择率定目标" />
@@ -36,9 +138,35 @@ const ModelRunView = (props: IProps) => {
           />
         );
       })}
-      <Button type="primary" style={{ width: 120 }}>
-        运行模型
-      </Button>
+      <div style={{ display: "flex" }} className="button-selector-wrapper">
+        <Button type="primary" style={{ width: 120, marginRight: "1rem" }}>
+          运行模型
+        </Button>
+        <Select
+          // defaultValue="lucy"
+          style={{ width: 120 }}
+          onChange={handleOpsChange}
+          options={calibrateOptions}
+        />
+      </div>
+      <div className="charts-box">
+        {Object.keys(curInfo).map((key, index) => {
+          if (key !== "timeStamp") {
+            return (
+              <Fragment key={key}>
+                <div
+                  style={{
+                    width: "100rem",
+                    height: "20rem",
+                    margin: "2rem 0",
+                  }}
+                  className={`echarts-${key}`}
+                ></div>
+              </Fragment>
+            );
+          }
+        })}
+      </div>
     </ModelRunBox>
   );
 };
